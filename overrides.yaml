@@ -4,10 +4,6 @@
 # NOTE: The system does NOT validate these overrides against the rules.
 # This is by design, to give you full control.
 
-- employee: Emily T.
-  position: Conductor
-  start_time: "3:30 PM"
-  end_time: "5:00 PM"
 
 # - employee: Example E.
 #   position: Handout
