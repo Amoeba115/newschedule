@@ -133,7 +133,7 @@ with main_col1:
         emp = override.get('employee', 'N/A')
         pos = override.get('position', 'N/A')
         st.markdown(f"`{emp}` in `{pos}` from `{override.get('start_time')}` to `{override.get('end_time')}`")
-        if st.button(f"Remove#{i}", key=f"del_ovr_{i}"):
+        if st.button(f"Remove #{i}", key=f"del_ovr_{i}"):
             st.session_state.overrides.pop(i)
             st.rerun()
     with st.expander("Add New Override"):
