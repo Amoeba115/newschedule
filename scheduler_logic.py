@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version with Robust Variety Logic)
+# File: scheduler_logic.py (Final Version with Position-Specific Priorities)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -64,24 +64,25 @@ def is_assignment_valid(employee, position, employee_states, rules):
     return True
 
 def calculate_assignment_score(assignments, employee_states, rules):
-    """Scores a set of assignments based on a weighted system for preferences."""
+    """Dynamically scores assignments based on position-specific priorities."""
     score = 0
-    preferences = {list(p.keys())[0]: list(p.values())[0] for p in rules.get('preferences', [])}
+    strategy = rules.get('prioritization_strategy', {})
+    consistency_roles = strategy.get('focus_on_consistency_for', [])
     
     for pos, emp in assignments.items():
         state = employee_states.get(emp, {})
-        # High score for consistency
-        if preferences.get('prefer_max_consecutive_slots', False):
-            if state.get('last_pos') == pos:
-                score += 10
         
-        # Weighted scoring for variety
-        if preferences.get('prefer_variety', False):
+        # Apply consistency scoring for specified roles
+        if pos in consistency_roles:
+            if state.get('last_pos') == pos:
+                score += 10 # High score for consistency in this role
+        
+        # Apply variety scoring for all other roles
+        else:
             history = state.get('history', [])
             if pos not in history:
                 score += 1 # Bonus for a genuinely new task
             else:
-                # Penalize based on how recent the repeated task was
                 if len(history) > 0 and history[-1] == pos:
                     score -= 10 # Strong penalty for ABA pattern
                 elif len(history) > 1 and history[-2] == pos:
@@ -90,6 +91,7 @@ def calculate_assignment_score(assignments, employee_states, rules):
     return score
 
 def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules):
+    # This function's logic remains the same, but it now uses the new dynamic scoring
     if time_idx >= len(time_slots):
         return True, schedule
 
@@ -100,7 +102,7 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
     positions_to_fill = positions_to_fill[:len(available_employees)]
 
     best_permutation = None
-    best_score = -float('inf') # Initialize with a very low score
+    best_score = -float('inf')
 
     for p in permutations(available_employees):
         current_assignments = {pos: emp for pos, emp in zip(positions_to_fill, p)}
@@ -121,7 +123,7 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
             state = employee_states.get(emp, {})
             last_pos = state.get('last_pos')
             history = state.get('history', [])
-            new_history = (history + [pos])[-3:] # Keep track of the last 3 positions
+            new_history = (history + [pos])[-3:]
             new_states[emp] = {
                 'last_pos': pos,
                 'time_in_pos': state.get('time_in_pos', 0) + 1 if pos == last_pos else 1,
