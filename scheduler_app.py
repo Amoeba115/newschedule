@@ -67,7 +67,7 @@ st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration<
 
 # File Uploader
 st.sidebar.markdown('<h3>Import Data</h3>', unsafe_allow_html=True)
-uploaded_file = st.sidebar.file_uploader("Upload an employee data file or type in schedules manually. Please note that there's a button at the bottom of the page to let you download the data you enter manually as a file so you don't have to manually enter it twice if you come back later", type=["txt"])
+uploaded_file = st.sidebar.file_uploader("Upload an employee data file or type in schedules manually. <br> Please note that there's a button at the bottom of the page to let you download the data you enter manually as a file so you don't have to manually enter it twice if you come back later.", type=["txt"])
 if uploaded_file is not None:
     file_content = uploaded_file.getvalue().decode("utf-8")
     st.session_state.employee_data = parse_summary_file(file_content)
