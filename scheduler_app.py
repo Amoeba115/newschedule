@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Corrected and Stable Version)
+# File: scheduler_app.py (Corrected NameError)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -6,8 +6,8 @@ from io import StringIO
 import yaml
 import os
 
-# Import the rule-based scheduling function
-from scheduler_logic import create_rule_based_schedule, parse_time_input
+# Import the scheduling function AND the WORK_POSITIONS constant
+from scheduler_logic import create_rule_based_schedule, parse_time_input, WORK_POSITIONS
 
 # --- Helper Functions ---
 def parse_summary_file(file_content):
@@ -45,7 +45,6 @@ def format_employee_data_for_download(employee_data_list):
 st.set_page_config(page_title="Employee Scheduler", layout="wide")
 st.markdown("""
 <style>
-    /* (Styling is unchanged) */
     div.stButton > button {
         background-color: #4CAF50; color: white; font-size: 16px; font-weight: bold;
         border-radius: 8px; border: 2px solid #4CAF50; width: 100%;
@@ -68,7 +67,6 @@ if 'overrides' not in st.session_state:
 
 # --- Page Title ---
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
-st.write("This tool generates a schedule based on a set of defined rules. You can also add specific 'Overrides' to pin an employee to a position.")
 
 # --- Sidebar ---
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
@@ -79,10 +77,8 @@ uploaded_file = st.sidebar.file_uploader("Upload an employee data file", type=["
 if uploaded_file is not None:
     file_content = uploaded_file.getvalue().decode("utf-8")
     st.session_state.employee_data = parse_summary_file(file_content)
-    # Clear the uploader widget to allow re-uploading the same file
     uploaded_file = None
     st.success("Data loaded successfully!")
-
 
 # Store Hours
 st.sidebar.markdown('<h3>Store Hours</h3>', unsafe_allow_html=True)
@@ -91,11 +87,8 @@ store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
-
-# Use a temporary list to build the UI and collect data
 employee_ui_list = []
 employee_names_for_override = []
-
 for i, emp in enumerate(st.session_state.employee_data):
     st.sidebar.markdown(f"--- **Employee {i+1}** ---")
     name = st.sidebar.text_input("Name", value=emp.get("Name", ""), key=f"name_{i}")
@@ -103,12 +96,9 @@ for i, emp in enumerate(st.session_state.employee_data):
     shift_end = st.sidebar.text_input("Shift End", value=emp.get("Shift End", ""), key=f"s_end_{i}")
     break_time = st.sidebar.text_input("Break", value=emp.get("Break", ""), key=f"break_{i}")
     has_tofftl = st.sidebar.selectbox("Has ToffTL?", ["No", "Yes"], index=0 if emp.get("Has ToffTL", "No").lower() == 'no' else 1, key=f"has_tofftl_{i}")
-    
     tofftl_start = ""
     if has_tofftl == "Yes":
         tofftl_start = st.sidebar.text_input("ToffTL Start", value=emp.get("ToffTL Start", ""), key=f"tofftl_s_{i}")
-
-    # Collect the data from the UI widgets
     employee_ui_list.append({
         "Name": name, "Shift Start": shift_start, "Shift End": shift_end,
         "Break": break_time, "Has ToffTL": has_tofftl, "ToffTL Start": tofftl_start
@@ -118,32 +108,24 @@ for i, emp in enumerate(st.session_state.employee_data):
             employee_names_for_override.append(f"{name.split(' ')[0]} {name.split(' ')[1][0] if len(name.split(' ')) > 1 and name.split(' ')[1] else ''}.")
         except IndexError:
             employee_names_for_override.append(name)
-
-# Update the session state with the collected data AFTER the loop
 st.session_state.employee_data = employee_ui_list
 
-# Add/Remove employee buttons
 col1, col2 = st.sidebar.columns(2)
 if col1.button("Add Employee", use_container_width=True):
     st.session_state.employee_data.append({})
     st.rerun()
-
 if col2.button("Remove Last", use_container_width=True):
     if st.session_state.employee_data:
         st.session_state.employee_data.pop()
         st.rerun()
 
-# Download Employee Data Button
 st.sidebar.markdown("---")
 if st.session_state.employee_data:
     download_data = format_employee_data_for_download(st.session_state.employee_data)
-    if download_data: # Only show button if there is data to download
+    if download_data:
         st.sidebar.download_button(
-            label="Download Employee Data",
-            data=download_data,
-            file_name="employee_inputs.txt",
-            mime="text/plain",
-            use_container_width=True
+            label="Download Employee Data", data=download_data, file_name="employee_inputs.txt",
+            mime="text/plain", use_container_width=True
         )
 
 # --- Main Content Area ---
@@ -151,7 +133,6 @@ main_col1, main_col2 = st.columns(2)
 
 with main_col1:
     st.subheader("Schedule Overrides")
-    # (Override management UI remains the same)
     for i, override in enumerate(st.session_state.overrides):
         emp = override.get('employee', 'N/A')
         pos = override.get('position', 'N/A')
@@ -159,7 +140,6 @@ with main_col1:
         if st.button(f"Remove##{i}", key=f"del_ovr_{i}"):
             st.session_state.overrides.pop(i)
             st.rerun()
-
     with st.expander("Add New Override"):
         with st.form("new_override_form"):
             new_emp = st.selectbox("Employee", options=sorted(employee_names_for_override), key="new_emp")
@@ -172,20 +152,16 @@ with main_col1:
 
 with main_col2:
     st.subheader("Active Scheduling Rules")
-    # (Rule display remains the same)
     try:
         with open("rules.yaml", 'r') as f:
             st.code(f.read(), language="yaml")
     except FileNotFoundError:
         st.error("rules.yaml not found!")
 
-
 st.markdown("---")
 if st.button("Generate Schedule", use_container_width=True):
-    # (Schedule generation logic remains the same)
     with open("overrides.yaml", 'w') as f:
         yaml.dump(st.session_state.overrides, f, default_flow_style=False)
-
     if not st.session_state.employee_data: st.error("Please add at least one employee.")
     else:
         ref_date = datetime(1970,1,1).date()
@@ -195,7 +171,6 @@ if st.button("Generate Schedule", use_container_width=True):
         else:
             with st.spinner("Generating schedule..."):
                 schedule_output = create_rule_based_schedule(store_open_dt.time(), store_close_dt.time(), st.session_state.employee_data)
-                
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output:
                     st.error(schedule_output)
