@@ -67,7 +67,7 @@ st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration<
 
 # File Uploader
 st.sidebar.markdown('<h3>Import Data</h3>', unsafe_allow_html=True)
-uploaded_file = st.sidebar.file_uploader("Upload an employee data file", type=["txt"])
+uploaded_file = st.sidebar.file_uploader("Upload an employee data file or type in schedules manually. Please note that there's a button at the bottom of the page to let you download the data you enter manually as a file so you don't have to manually enter it twice if you come back later", type=["txt"])
 if uploaded_file is not None:
     file_content = uploaded_file.getvalue().decode("utf-8")
     st.session_state.employee_data = parse_summary_file(file_content)
@@ -127,13 +127,13 @@ if st.session_state.employee_data:
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
-    st.subheader("Schedule Overrides")
+    st.subheader("Schedule Overrides (for if you need someone in a specific position for a designated period of time")
     # (Override management UI remains the same)
     for i, override in enumerate(st.session_state.overrides):
         emp = override.get('employee', 'N/A')
         pos = override.get('position', 'N/A')
         st.markdown(f"`{emp}` in `{pos}` from `{override.get('start_time')}` to `{override.get('end_time')}`")
-        if st.button(f"Remove##{i}", key=f"del_ovr_{i}"):
+        if st.button(f"Remove#{i}", key=f"del_ovr_{i}"):
             st.session_state.overrides.pop(i)
             st.rerun()
     with st.expander("Add New Override"):
@@ -167,7 +167,7 @@ preferences:
 
     # Display rules in an editable text area
     edited_rules = st.text_area(
-        "Edit Rules (in YAML format) and click Save",
+        "Edit Rules as you like, then click Save",
         value=rules_content,
         height=300
     )
