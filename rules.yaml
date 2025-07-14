@@ -1,4 +1,5 @@
-# rules.yaml - Scheduling Rule Configuration
+# rules.yaml - Final Version
+# This file defines the hard rules and scheduling priorities.
 
 # --- Position-Specific Rules ---
 position_rules:
@@ -9,15 +10,13 @@ position_rules:
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
     max_consecutive_slots: 1
 
-  - position: [Handout, Expo]
-    max_consecutive_slots: 1
-
-  - position: [Drink Maker 1, Drink Maker 2]
+  - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
 
-# --- Algorithm Settings ---
-preferences:
-  # When both are true, the engine will prioritize max consecutive slots first,
-  # then use variety as a "tie-breaker."
-  - prefer_max_consecutive_slots: true
-  - prefer_variety: true
+# --- Prioritization Strategy ---
+# Define which positions should prioritize long, consistent assignments.
+# Any position NOT listed here will automatically be prioritized for variety.
+prioritization_strategy:
+  focus_on_consistency_for:
+    - Conductor
+    # - Handout
