@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Now with Tiered Preference Logic)
+# File: scheduler_logic.py (Final Version with Robust Variety Logic)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -6,7 +6,6 @@ from datetime import datetime
 from itertools import permutations
 
 # --- Configuration & Helper Functions ---
-# (These helpers remain the same)
 FINAL_SCHEDULE_ROW_ORDER = [
     "Handout", "Line Buster 1", "Conductor", "Line Buster 2", "Expo",
     "Drink Maker 1", "Drink Maker 2", "Line Buster 3", "Break", "ToffTL"
@@ -53,7 +52,6 @@ def preprocess_employee_data(employee_data_list):
 # --- Core Rule-Checking and Scheduling Logic ---
 
 def is_assignment_valid(employee, position, employee_states, rules):
-    # (This function is unchanged)
     state = employee_states.get(employee, {})
     last_pos = state.get('last_pos')
     time_in_pos = state.get('time_in_pos', 0)
@@ -65,28 +63,33 @@ def is_assignment_valid(employee, position, employee_states, rules):
                 return False
     return True
 
-# --- NEW: Weighted scoring to create a preference hierarchy ---
 def calculate_assignment_score(assignments, employee_states, rules):
     """Scores a set of assignments based on a weighted system for preferences."""
     score = 0
     preferences = {list(p.keys())[0]: list(p.values())[0] for p in rules.get('preferences', [])}
     
-    # High score for consistency
-    if preferences.get('prefer_max_consecutive_slots', False):
-        for pos, emp in assignments.items():
-            if employee_states.get(emp, {}).get('last_pos') == pos:
-                score += 10 # Give a large bonus for keeping an employee in place
-    
-    # Low score for variety (used as a tie-breaker)
-    if preferences.get('prefer_variety', False):
-        for pos, emp in assignments.items():
-            if employee_states.get(emp, {}).get('last_pos') != pos:
-                score += 1 # Give a small bonus for changing positions
+    for pos, emp in assignments.items():
+        state = employee_states.get(emp, {})
+        # High score for consistency
+        if preferences.get('prefer_max_consecutive_slots', False):
+            if state.get('last_pos') == pos:
+                score += 10
+        
+        # Weighted scoring for variety
+        if preferences.get('prefer_variety', False):
+            history = state.get('history', [])
+            if pos not in history:
+                score += 1 # Bonus for a genuinely new task
+            else:
+                # Penalize based on how recent the repeated task was
+                if len(history) > 0 and history[-1] == pos:
+                    score -= 10 # Strong penalty for ABA pattern
+                elif len(history) > 1 and history[-2] == pos:
+                    score -= 5  # Weaker penalty for ABCA pattern
                 
     return score
 
 def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules):
-    # This function's logic remains the same, but it now uses the new weighted scoring
     if time_idx >= len(time_slots):
         return True, schedule
 
@@ -97,7 +100,7 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
     positions_to_fill = positions_to_fill[:len(available_employees)]
 
     best_permutation = None
-    best_score = -1
+    best_score = -float('inf') # Initialize with a very low score
 
     for p in permutations(available_employees):
         current_assignments = {pos: emp for pos, emp in zip(positions_to_fill, p)}
@@ -115,9 +118,15 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
         new_states = employee_states.copy()
         full_slot_assignments = {**schedule[current_time_slot_str], **best_permutation}
         for pos, emp in full_slot_assignments.items():
-            last_pos = employee_states.get(emp, {}).get('last_pos')
-            time_in_pos = employee_states.get(emp, {}).get('time_in_pos', 0)
-            new_states[emp] = {'last_pos': pos, 'time_in_pos': time_in_pos + 1 if pos == last_pos else 1}
+            state = employee_states.get(emp, {})
+            last_pos = state.get('last_pos')
+            history = state.get('history', [])
+            new_history = (history + [pos])[-3:] # Keep track of the last 3 positions
+            new_states[emp] = {
+                'last_pos': pos,
+                'time_in_pos': state.get('time_in_pos', 0) + 1 if pos == last_pos else 1,
+                'history': new_history
+            }
         schedule[current_time_slot_str].update(best_permutation)
         is_solved, final_schedule = solve_schedule_recursive(
             time_idx + 1, time_slots, availability, schedule, new_states, rules
@@ -126,6 +135,7 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
             return True, final_schedule
 
     return False, None
+
 
 def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list):
     # This main function is unchanged
