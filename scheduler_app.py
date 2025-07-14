@@ -127,7 +127,7 @@ if st.session_state.employee_data:
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
-    st.subheader("Schedule Overrides (for if you need someone in a specific position for a designated period of time")
+    st.subheader("Schedule Overrides (for if you need someone in a specific position for a designated period of time)")
     # (Override management UI remains the same)
     for i, override in enumerate(st.session_state.overrides):
         emp = override.get('employee', 'N/A')
