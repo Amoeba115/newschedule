@@ -1,0 +1,15 @@
+# overrides.yaml
+# Use this file to force specific employee assignments.
+# The scheduler will treat these as "pinned" and will not change them.
+# NOTE: The system does NOT validate these overrides against the rules.
+# This is by design, to give you full control.
+
+- employee: Emily T.
+  position: Conductor
+  start_time: "3:30 PM"
+  end_time: "5:00 PM"
+
+# - employee: Example E.
+#   position: Handout
+#   start_time: "9:00 AM"
+#   end_time: "10:00 AM"
