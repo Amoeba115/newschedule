@@ -3,14 +3,17 @@
 
 # --- Position-Specific Rules ---
 position_rules:
-  - position: Conductor
+  - position: [Conductor]
     max_consecutive_slots: 2
     must_start_on_the_hour: true
 
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
     max_consecutive_slots: 1
 
-  - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
+  - position: [Handout, Expo]
+    max_consecutive_slots: 1
+
+  - position: [Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
 
 # --- Prioritization Strategy ---
@@ -19,4 +22,3 @@ position_rules:
 prioritization_strategy:
   focus_on_consistency_for:
     - Conductor
-    # - Handout
