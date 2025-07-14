@@ -15,6 +15,6 @@ position_rules:
 # --- Algorithm Settings ---
 preferences:
   - prioritize_rested_employees: true
-  - prefer_variety: true # Note: This is often the opposite of prefer_max_consecutive_slots
+  - prefer_variety: false # Note: This is often the opposite of prefer_max_consecutive_slots
   # NEW PREFERENCE: Set this to true to make the engine favor longer assignments.
   - prefer_max_consecutive_slots: true
