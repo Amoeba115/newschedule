@@ -3,21 +3,18 @@
 # --- Position-Specific Rules ---
 position_rules:
   - position: Conductor
-    max_consecutive_slots: 2 # 1 hour
+    max_consecutive_slots: 2
     must_start_on_the_hour: true
 
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
     max_consecutive_slots: 1
 
-  - position: [Handout]
-    max_consecutive_slots: 1
-
-  - position: [Expo, Drink Maker 1, Drink Maker 2]
+  - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
 
 # --- Algorithm Settings ---
 preferences:
-  - prioritize_rested_employees: true
-  - prefer_variety: false # Note: This is often the opposite of prefer_max_consecutive_slots
-  # NEW PREFERENCE: Set this to true to make the engine favor longer assignments.
+  # When both are true, the engine will prioritize max consecutive slots first,
+  # then use variety as a "tie-breaker."
   - prefer_max_consecutive_slots: true
+  - prefer_variety: true
