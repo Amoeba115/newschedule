@@ -9,7 +9,10 @@ position_rules:
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
     max_consecutive_slots: 1
 
-  - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
+  - position: [Handout]
+    max_consecutive_slots: 1
+
+  - position: [Expo, Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
 
 # --- Algorithm Settings ---
