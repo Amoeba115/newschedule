@@ -1,26 +1,20 @@
 # rules.yaml - Scheduling Rule Configuration
-# This file defines the hard rules the scheduling engine MUST follow.
 
 # --- Position-Specific Rules ---
-# Define how many consecutive 30-minute time slots an employee can work in a specific role.
 position_rules:
   - position: Conductor
     max_consecutive_slots: 2 # 1 hour
-    # If true, a new Conductor can only start on the hour (e.g., 9:00), not the half-hour.
     must_start_on_the_hour: true
 
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
-    # This prevents an employee from being a Line Buster for more than 30 minutes straight.
     max_consecutive_slots: 1
 
   - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
-    # All other standard positions have a 1-hour limit.
     max_consecutive_slots: 2
 
 # --- Algorithm Settings ---
-# These are preferences the algorithm will try to follow after all hard rules are met.
 preferences:
-  # When assigning employees, prioritize giving roles to those who have been idle the longest.
   - prioritize_rested_employees: true
-  # When possible, rotate employees through different positions to improve variety.
-  - prefer_variety: true
+  - prefer_variety: false # Note: This is often the opposite of prefer_max_consecutive_slots
+  # NEW PREFERENCE: Set this to true to make the engine favor longer assignments.
+  - prefer_max_consecutive_slots: true
