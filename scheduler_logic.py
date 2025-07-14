@@ -1,8 +1,8 @@
-# File: scheduler_logic.py (Corrected Override Logic)
+# File: scheduler_logic.py (Now with Preference Optimization)
 import pandas as pd
 import yaml
 from io import StringIO
-from datetime import datetime, time
+from datetime import datetime
 from itertools import permutations
 
 # --- Configuration & Helper Functions ---
@@ -53,81 +53,90 @@ def preprocess_employee_data(employee_data_list):
 # --- Core Rule-Checking and Scheduling Logic ---
 
 def is_assignment_valid(employee, position, employee_states, rules):
-    # (Simplified this function slightly as time-based rules are now handled elsewhere)
     state = employee_states.get(employee, {})
     last_pos = state.get('last_pos')
     time_in_pos = state.get('time_in_pos', 0)
     for rule in rules.get('position_rules', []):
-        rule_positions = rule['position'] if isinstance(rule['position'], list) else [rule['position']]
+        rule_positions = rule.get('position', [])
+        rule_positions = rule_positions if isinstance(rule_positions, list) else [rule_positions]
         if position in rule_positions:
             if position == last_pos and time_in_pos >= rule.get('max_consecutive_slots', 99):
                 return False
     return True
 
-#========================================================================================#
-#====== THIS IS THE CORRECTED RECURSIVE SOLVER ==========================================#
-#========================================================================================#
+# --- NEW: Scoring function to rank valid assignments based on preferences ---
+def calculate_assignment_score(assignments, employee_states, rules):
+    """Scores a set of assignments based on the preferences in the rules file."""
+    score = 0
+    preferences = {list(p.keys())[0]: list(p.values())[0] for p in rules.get('preferences', [])}
+    
+    if preferences.get('prefer_max_consecutive_slots', False):
+        for pos, emp in assignments.items():
+            if employee_states.get(emp, {}).get('last_pos') == pos:
+                score += 1 # Add a point for each employee continuing in their role
+                
+    if preferences.get('prefer_variety', False):
+        for pos, emp in assignments.items():
+            if employee_states.get(emp, {}).get('last_pos') == pos:
+                score -= 1 # Penalize keeping employees in the same role
+                
+    return score
+
 def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules):
     if time_idx >= len(time_slots):
         return True, schedule
 
     current_time_slot_str = time_slots[time_idx]
-    
-    # Identify positions and employees already fixed by overrides for this slot
     pre_assigned_positions = set(schedule[current_time_slot_str].keys())
-    
-    # Determine the positions that still need to be filled
     positions_to_fill = [p for p in WORK_POSITIONS if p not in pre_assigned_positions]
-    
-    # Determine which employees are available (not on break, not overridden)
     available_employees = sorted(list(availability.get(current_time_slot_str, [])))
-    
-    # Ensure we only try to fill as many positions as we have available staff
     positions_to_fill = positions_to_fill[:len(available_employees)]
 
+    best_permutation = None
+    best_score = -1
+
+    # --- MODIFIED: Instead of returning on the first valid schedule, find the BEST one ---
     for p in permutations(available_employees):
         current_assignments = {pos: emp for pos, emp in zip(positions_to_fill, p)}
         
-        # Check if the proposed new assignments are valid
         is_permutation_valid = all(
             is_assignment_valid(emp, pos, employee_states, rules)
             for pos, emp in current_assignments.items()
         )
 
         if is_permutation_valid:
-            # Create a combined state for the next step
-            # Start with the original state
-            new_states = employee_states.copy()
-            # Combine pre-assigned and newly assigned for the full picture
-            full_slot_assignments = {**schedule[current_time_slot_str], **current_assignments}
+            score = calculate_assignment_score(current_assignments, employee_states, rules)
+            if score > best_score:
+                best_score = score
+                best_permutation = current_assignments
 
-            for pos, emp in full_slot_assignments.items():
-                last_pos = employee_states.get(emp, {}).get('last_pos')
-                time_in_pos = employee_states.get(emp, {}).get('time_in_pos', 0)
-                new_states[emp] = {
-                    'last_pos': pos,
-                    'time_in_pos': time_in_pos + 1 if pos == last_pos else 1
-                }
-            
-            # Update the schedule with the newly solved assignments
-            schedule[current_time_slot_str].update(current_assignments)
-            
-            # Recurse
-            is_solved, final_schedule = solve_schedule_recursive(
-                time_idx + 1, time_slots, availability, schedule, new_states, rules
-            )
-            if is_solved:
-                return True, final_schedule
+    # If a valid permutation was found, proceed with the best one
+    if best_permutation is not None:
+        new_states = employee_states.copy()
+        full_slot_assignments = {**schedule[current_time_slot_str], **best_permutation}
 
-    # If no solution found, backtrack by removing only the assignments added in this step
-    for pos in positions_to_fill:
-        if pos in schedule[current_time_slot_str]:
-            del schedule[current_time_slot_str][pos]
-            
+        for pos, emp in full_slot_assignments.items():
+            last_pos = employee_states.get(emp, {}).get('last_pos')
+            time_in_pos = employee_states.get(emp, {}).get('time_in_pos', 0)
+            new_states[emp] = {
+                'last_pos': pos,
+                'time_in_pos': time_in_pos + 1 if pos == last_pos else 1
+            }
+        
+        schedule[current_time_slot_str].update(best_permutation)
+        
+        is_solved, final_schedule = solve_schedule_recursive(
+            time_idx + 1, time_slots, availability, schedule, new_states, rules
+        )
+        if is_solved:
+            return True, final_schedule
+
+    # If no valid way forward, backtrack
     return False, None
 
 
 def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list):
+    # This main function remains largely the same, just calling the improved solver
     rules = load_config("rules.yaml")
     overrides = load_config("overrides.yaml", default_value=[])
     df_long = preprocess_employee_data(employee_data_list)
@@ -145,7 +154,6 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
 
     schedule_assignments = {t: {} for t in time_slots_str}
     
-    # Apply overrides BEFORE solving
     ref_date = datetime(1970, 1, 1).date()
     for override in overrides:
         emp, pos = override.get('employee'), override.get('position')
