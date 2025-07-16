@@ -154,7 +154,7 @@ with main_col2:
     
     # CORRECTED: Use st.markdown for the instructions and a simple label for the text_area
     st.markdown("""
-    Edit the rules for this session here. It's not as complex as it seems at first glance!
+    Edit the rules for this session here. I promise it's not as complicated as it might look at first lol.
 
     I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.
     
@@ -162,7 +162,7 @@ with main_col2:
     """)
     
     edited_rules = st.text_area(
-        label="Edit Rules for this session:",
+        label="Edit the rules for this session:",
         value=st.session_state.rules_text,
         height=300
     )
