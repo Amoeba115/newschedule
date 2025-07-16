@@ -15,7 +15,7 @@ position_rules:
 
   # This group rule is ONLY active AFTER 12:30 PM but BEFORE 7:30 PM.
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
-    start_time: "12:30 AM"
+    start_time: "12:30 PM"
     end_time: "7:30 PM"
     max_consecutive_slots_in_group: 1 # Stricter during the rest of the day, thought if you want you can change it to be whatever hours you like
 
