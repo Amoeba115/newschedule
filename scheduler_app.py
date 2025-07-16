@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with All UI Components Restored)
+# File: scheduler_app.py (Final Version with UI Adjustments)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -39,14 +39,6 @@ def format_employee_data_for_download(employee_data_list):
         summary_string += "\n"
     return summary_string.strip()
 
-def load_default_rules():
-    """Loads rules from the YAML file to initialize the session state."""
-    try:
-        with open("rules.yaml", 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "# rules.yaml not found."
-
 # --- Page Configuration & State Initialization ---
 st.set_page_config(page_title="Employee Scheduler", layout="wide")
 if 'employee_data' not in st.session_state:
@@ -58,14 +50,24 @@ if 'overrides' not in st.session_state:
     else:
         st.session_state.overrides = []
 if 'rules_text' not in st.session_state:
-    st.session_state.rules_text = load_default_rules()
+    try:
+        with open("rules.yaml", 'r') as f:
+            st.session_state.rules_text = f.read()
+    except FileNotFoundError:
+        st.session_state.rules_text = "# rules.yaml not found."
 
 # --- UI Rendering ---
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
-# Instructions
-st.sidebar.info("Welcome to the scheduler! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.")
+# Instructions Box
+st.sidebar.info("""
+Welcome to the scheduler tool! Enter your employees' work times below.
+
+To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
+
+If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
+""")
 st.sidebar.markdown("---")
 
 # File Uploader
@@ -83,15 +85,6 @@ store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
-col1, col2 = st.sidebar.columns(2)
-if col1.button("Add Employee", use_container_width=True):
-    st.session_state.employee_data.append({})
-    st.rerun()
-if col2.button("Remove Last", use_container_width=True):
-    if st.session_state.employee_data:
-        st.session_state.employee_data.pop()
-        st.rerun()
-
 employee_ui_list = []
 employee_names_for_override = []
 for i, emp in enumerate(st.session_state.employee_data):
@@ -120,6 +113,16 @@ for i, emp in enumerate(st.session_state.employee_data):
         except IndexError:
             employee_names_for_override.append(name)
 st.session_state.employee_data = employee_ui_list
+
+# Add/Remove Buttons now appear below the employee list
+col1, col2 = st.sidebar.columns(2)
+if col1.button("Add Employee", use_container_width=True):
+    st.session_state.employee_data.append({})
+    st.rerun()
+if col2.button("Remove Last", use_container_width=True):
+    if st.session_state.employee_data:
+        st.session_state.employee_data.pop()
+        st.rerun()
 
 st.sidebar.markdown("---")
 if st.session_state.employee_data:
