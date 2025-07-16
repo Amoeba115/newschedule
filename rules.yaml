@@ -3,22 +3,21 @@
 
 # --- Position-Specific Rules ---
 position_rules:
-  - position: [Conductor]
+  - position: Conductor
     max_consecutive_slots: 2
     must_start_on_the_hour: true
 
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
+    # NEW RULE: An employee can only spend 30 minutes total across ALL Line Buster roles.
+    max_consecutive_slots_in_group: 1
+    # The old rule still applies to prevent, for example, two back-to-back Line Buster 1 shifts
+    # if the group rule were to be relaxed in the future.
     max_consecutive_slots: 1
 
-  - position: [Handout, Expo]
-    max_consecutive_slots: 1
-
-  - position: [Drink Maker 1, Drink Maker 2]
+  - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
 
 # --- Prioritization Strategy ---
-# Define which positions should prioritize long, consistent assignments.
-# Any position NOT listed here will automatically be prioritized for variety.
 prioritization_strategy:
   focus_on_consistency_for:
     - Conductor
