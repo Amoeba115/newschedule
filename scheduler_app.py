@@ -85,7 +85,7 @@ if uploaded_file is not None:
 st.sidebar.markdown('<h3>Store Settings</h3>', unsafe_allow_html=True)
 store_open_time_str = st.sidebar.text_input("Store Open Time", "7:30 AM")
 store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
-has_lobby = st.sidebar.checkbox("Does your store have a lobby?", value=True)
+has_lobby = st.sidebar.checkbox("Check this box if your store has a lobby (toggles the Greeter position)", value=True)
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
