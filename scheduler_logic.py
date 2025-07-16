@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version with Time-Based Rules)
+# File: scheduler_logic.py (Final, Corrected Time Logic)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -14,8 +14,14 @@ WORK_POSITIONS = [p for p in FINAL_SCHEDULE_ROW_ORDER if p not in ["Break", "Tra
 
 def parse_time_input(time_val, ref_date):
     if pd.isna(time_val) or str(time_val).strip().upper() in ['N/A', '']: return pd.NaT
-    try: return pd.to_datetime(f"{ref_date.strftime('%Y-%m-%d')} {str(time_val).strip()}")
-    except ValueError: return pd.NaT
+    try:
+        # Attempt to parse time in different formats
+        return pd.to_datetime(f"{ref_date.strftime('%Y-%m-%d')} {str(time_val).strip()}")
+    except ValueError:
+        try:
+            return pd.to_datetime(str(time_val).strip())
+        except ValueError:
+            return pd.NaT
 
 def load_config(filepath, default_value={}):
     try:
@@ -56,13 +62,14 @@ def is_assignment_valid(employee, position, time_slot_obj, employee_states, rule
     last_pos = state.get('last_pos')
     time_in_pos = state.get('time_in_pos', 0)
     
-    for rule in rules.get('position_rules', []):
-        # UPDATED: Check if the rule is active during this time slot
-        rule_start_time = pd.to_datetime(rule.get('start_time', '12:00 AM')).time()
-        rule_end_time = pd.to_datetime(rule.get('end_time', '11:59 PM')).time()
+    current_time = time_slot_obj.time()
 
-        if not (rule_start_time <= time_slot_obj.time() < rule_end_time):
-            continue # Skip this rule if it's not in the active time window
+    for rule in rules.get('position_rules', []):
+        rule_start_time = parse_time_input(rule.get('start_time', '12:00 AM'), datetime.now().date()).time()
+        rule_end_time = parse_time_input(rule.get('end_time', '11:59 PM'), datetime.now().date()).time()
+
+        if not (rule_start_time <= current_time < rule_end_time):
+            continue
 
         rule_positions = rule.get('position', [])
         rule_positions = rule_positions if isinstance(rule_positions, list) else [rule_positions]
@@ -76,7 +83,6 @@ def is_assignment_valid(employee, position, time_slot_obj, employee_states, rule
     return True
 
 def calculate_assignment_score(assignments, employee_states, rules):
-    # (This function is unchanged)
     score = 0
     strategy = rules.get('prioritization_strategy', {})
     consistency_roles = strategy.get('focus_on_consistency_for', [])
@@ -96,7 +102,7 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
     if time_idx >= len(time_slots): return True, schedule
 
     current_time_slot_str = time_slots[time_idx]
-    current_time_slot_obj = parse_time_input(current_time_slot_str, datetime(1970,1,1).date()) # Needed for time check
+    current_time_slot_obj = parse_time_input(current_time_slot_str, datetime(1970,1,1).date())
     pre_assigned_positions = set(schedule[current_time_slot_str].keys())
     positions_to_fill = [p for p in WORK_POSITIONS if p not in pre_assigned_positions]
     available_employees = sorted(list(availability.get(current_time_slot_str, [])))
@@ -117,17 +123,10 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
         for pos, emp in full_slot_assignments.items():
             state = employee_states.get(emp, {})
             last_pos = state.get('last_pos')
-            in_same_group = False
-            for rule in rules.get('position_rules', []):
-                if 'max_consecutive_slots_in_group' in rule:
-                    group_positions = rule.get('position', [])
-                    if pos in group_positions and last_pos in group_positions:
-                        in_same_group = True
-                        break
+            in_same_group = any('max_consecutive_slots_in_group' in r and pos in r.get('position', []) and last_pos in r.get('position', []) for r in rules.get('position_rules', []))
             time_in_pos = state.get('time_in_pos', 0) + 1 if (pos == last_pos or in_same_group) else 1
             new_states[emp] = {
-                'last_pos': pos,
-                'time_in_pos': time_in_pos,
+                'last_pos': pos, 'time_in_pos': time_in_pos,
                 'history': (state.get('history', []) + [pos])[-3:]
             }
         schedule[current_time_slot_str].update(best_permutation)
@@ -138,7 +137,6 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
 
 
 def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list):
-    # This main function is unchanged
     rules = load_config("rules.yaml")
     overrides = load_config("overrides.yaml", default_value=[])
     df_long = preprocess_employee_data(employee_data_list)
@@ -169,7 +167,7 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         0, time_slots_str, availability, schedule_assignments, {}, rules
     )
     if not is_solved:
-        return "ERROR: Could not find a valid schedule."
+        return "ERROR: Could not find a valid schedule. This might be due to a rule conflict or not enough staff to cover the required positions under the current rules."
     rows = []
     for time_str in time_slots_str:
         row = {"Time": time_str}
