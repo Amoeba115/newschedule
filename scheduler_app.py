@@ -60,7 +60,7 @@ if 'rules_text' not in st.session_state:
 
 # --- UI Rendering ---
 st.markdown('<h1 style="color: #4CAF50;">Swig employee schedule maker!</h1>', unsafe_allow_html=True)
-st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
+st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Start Here!</h1>', unsafe_allow_html=True)
 
 st.sidebar.info("""
 Welcome to the scheduler tool! Enter your employees' work times below.
