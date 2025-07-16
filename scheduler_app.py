@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Corrected for Import Error)
+# File: scheduler_app.py (Final Version with Corrected Line Breaks)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -63,13 +63,7 @@ st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', un
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
 st.sidebar.info("""
-Welcome to the scheduler tool! Enter your employees' work times below.
-
-To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
-
-Also, there's a bug I haven't figured out how to fix yet, so if you upload an employee data file, it might look like the site is bugging out and the data isn't loading in. Just click the little x that appears next to the file name and it'll stop the bugging and load the data. Ik it's weird, I haven't figured it out yet lol.
-
-If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
+Welcome to the scheduler tool! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.
 """)
 st.sidebar.markdown("---")
 
@@ -149,7 +143,6 @@ with main_col1:
     with st.expander("Add New Override"):
         with st.form("new_override_form"):
             new_emp = st.selectbox("Employee", options=sorted(employee_names_for_override), key="new_emp")
-            # Corrected to use the imported UI_WORK_POSITIONS
             new_pos = st.selectbox("Position", options=UI_WORK_POSITIONS, key="new_pos")
             new_start = st.text_input("Start Time", key="new_start")
             new_end = st.text_input("End Time", key="new_end")
@@ -158,18 +151,18 @@ with main_col1:
                 st.rerun()
 with main_col2:
     st.subheader("Active Scheduling Rules")
-    st.write("Changes made here apply only to your current session.")
+    
+    # CORRECTED: Use st.markdown for the instructions and a simple label for the text_area
+    st.markdown("""
+    Edit the rules for this session here. It's not as complex as it seems at first glance!
 
-    # This text block now uses \n\n to create blank lines between paragraphs.
-    label_text = (
-        "Edit the rules for this session here. I promise it's not as complex as it might look at first lol\n\n"
-        "\n\nI've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. "
-        "You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.\n\n"
-        "You get the point, I'll stop rambling lol."
-    )
-
+    I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.
+    
+    You get the point, I'll stop rambling lol.
+    """)
+    
     edited_rules = st.text_area(
-        label=label_text,
+        label="Edit Rules for this session:",
         value=st.session_state.rules_text,
         height=300
     )
