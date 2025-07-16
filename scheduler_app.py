@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Instructions)
+# File: scheduler_app.py (Final Version with Correct Instructions)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -58,17 +58,18 @@ if 'overrides' not in st.session_state:
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
-# --- NEW: Instructions Editor ---
+# --- Instructions Editor ---
 st.sidebar.markdown('<h3>Instructions</h3>', unsafe_allow_html=True)
 try:
     with open(INSTRUCTIONS_FILE, 'r') as f:
         instructions_text = f.read()
 except FileNotFoundError:
-    instructions_text = "Enter employee info below or upload. Please only upload files that you got from this page so it reads the data correctly."
+    # UPDATED: The user's custom paragraph is now the default text
+    instructions_text = "Welcome to the scheduler tool! Enter your employees' work times below. To ensure you never have to enter it by hand more than once (for example if you have to refresh the page or smth), there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read. \n\n\nIf anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506"
 edited_instructions = st.sidebar.text_area(
-    "Welcome to the scheduler tool! Enter your employees' work times below. To ensure you never have to enter it by hand more than once (for example if you have to refresh the page or smth), there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read. \n\n\nIf anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506",
+    label="Edit Instructions", # UPDATED: The label is now more concise
     value=instructions_text,
-    height=150
+    height=250 # Increased height to better fit the text
 )
 if st.sidebar.button("Save Instructions", use_container_width=True):
     with open(INSTRUCTIONS_FILE, 'w') as f:
