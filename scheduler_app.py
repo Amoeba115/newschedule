@@ -160,7 +160,7 @@ with main_col2:
     st.subheader("Active Scheduling Rules")
     st.write("Changes made here apply only to your current session.")
 
-    # This is the corrected text block
+    # This text block now uses \n\n to create blank lines between paragraphs.
     label_text = (
         "Edit the rules for this session here. It's not as complex as it seems at first glance!\n\n"
         "I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. "
@@ -169,7 +169,7 @@ with main_col2:
     )
 
     edited_rules = st.text_area(
-        label=label_text, # Use the formatted label here
+        label=label_text,
         value=st.session_state.rules_text,
         height=300
     )
