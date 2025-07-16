@@ -59,7 +59,7 @@ if 'rules_text' not in st.session_state:
         st.session_state.rules_text = "# rules.yaml not found."
 
 # --- UI Rendering ---
-st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="color: #4CAF50;">Swig employee schedule maker!</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
 st.sidebar.info("""
