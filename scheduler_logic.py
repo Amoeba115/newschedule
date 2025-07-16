@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version with Updated Label)
+# File: scheduler_logic.py (Final Version with Training End Time)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -6,7 +6,6 @@ from datetime import datetime
 from itertools import permutations
 
 # --- Configuration & Helper Functions ---
-# UPDATED The label for the final schedule column
 FINAL_SCHEDULE_ROW_ORDER = [
     "Handout", "Line Buster 1", "Conductor", "Line Buster 2", "Expo",
     "Drink Maker 1", "Drink Maker 2", "Line Buster 3", "Break", "Training off the Line or Frosting?"
@@ -19,7 +18,6 @@ def parse_time_input(time_val, ref_date):
     except ValueError: return pd.NaT
 
 def load_config(filepath, default_value={}):
-    # (This function is unchanged)
     try:
         with open(filepath, 'r') as file:
             config = yaml.safe_load(file)
@@ -28,25 +26,30 @@ def load_config(filepath, default_value={}):
         return default_value
 
 def preprocess_employee_data(employee_data_list):
-    # (This function is unchanged)
     all_slots = []
     ref_date = datetime(1970, 1, 1).date()
     for emp_data in employee_data_list:
         name_parts = emp_data.get('Name', '').split(' ', 1)
         name = f"{name_parts[0]} {name_parts[1][0] if len(name_parts) > 1 and name_parts[1] else ''}.".strip()
         s_start, s_end = parse_time_input(emp_data.get('Shift Start'), ref_date), parse_time_input(emp_data.get('Shift End'), ref_date)
-        b_start, t_start = parse_time_input(emp_data.get('Break'), ref_date), parse_time_input(emp_data.get('ToffTL Start'), ref_date)
+        b_start = parse_time_input(emp_data.get('Break'), ref_date)
+        
+        # UPDATED: Now uses both start and end times for training
+        training_start = parse_time_input(emp_data.get('Training Start'), ref_date)
+        training_end = parse_time_input(emp_data.get('Training End'), ref_date)
+
         b_end = b_start + pd.Timedelta(minutes=30) if pd.notna(b_start) else pd.NaT
-        t_end = t_start + pd.Timedelta(minutes=60) if pd.notna(t_start) else pd.NaT
+        t_end = training_end if pd.notna(training_end) else (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
+        
         if pd.notna(s_start) and pd.notna(s_end):
             curr = s_start
             while curr < s_end:
                 on_break = pd.notna(b_start) and b_start <= curr < b_end
-                on_tofftl = pd.notna(t_start) and t_start <= curr < t_end
-                is_working = not (on_break or on_tofftl)
+                on_training = pd.notna(training_start) and training_start <= curr < t_end
+                is_working = not (on_break or on_training)
                 all_slots.append({
                     'Time': curr, 'EmployeeName': name, 'IsWorking': is_working,
-                    'IsOnBreak': on_break, 'IsOnToffTL': on_tofftl
+                    'IsOnBreak': on_break, 'IsOnTraining': on_training
                 })
                 curr += pd.Timedelta(minutes=30)
     return pd.DataFrame(all_slots) if all_slots else pd.DataFrame()
@@ -64,7 +67,6 @@ def is_assignment_valid(employee, position, employee_states, rules):
             if position == last_pos and time_in_pos >= rule.get('max_consecutive_slots', 99):
                 return False
     return True
-
 
 def calculate_assignment_score(assignments, employee_states, rules):
     # ... (no changes in this function)
@@ -114,21 +116,19 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
         if is_solved: return True, final_schedule
     return False, None
 
-
 def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list):
-    # (This main function is unchanged)
     rules = load_config("rules.yaml")
     overrides = load_config("overrides.yaml", default_value=[])
     df_long = preprocess_employee_data(employee_data_list)
     if df_long.empty: return "No employee data to process."
     time_slots_dt = sorted(df_long['Time'].unique())
     time_slots_str = [t.strftime('%I:%M %p').lstrip('0') for t in time_slots_dt]
-    availability, breaks, tofftl = {}, {}, {}
+    availability, breaks, training = {}, {}, {}
     for time_dt, time_str in zip(time_slots_dt, time_slots_str):
         slot_data = df_long[df_long['Time'] == time_dt]
         availability[time_str] = set(slot_data[slot_data['IsWorking']]['EmployeeName'])
         breaks[time_str] = set(slot_data[slot_data['IsOnBreak']]['EmployeeName'])
-        tofftl[time_str] = set(slot_data[slot_data['IsOnToffTL']]['EmployeeName'])
+        training[time_str] = set(slot_data[slot_data['IsOnTraining']]['EmployeeName']) # Changed from ToffTL
     schedule_assignments = {t: {} for t in time_slots_str}
     ref_date = datetime(1970, 1, 1).date()
     for override in overrides:
@@ -153,8 +153,7 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         row = {"Time": time_str}
         row.update(final_work_assignments.get(time_str, {}))
         row["Break"] = ", ".join(sorted(list(breaks.get(time_str, []))))
-        # UPDATED The column name for the final output
-        row["Training off the Line or Frosting?"] = ", ".join(sorted(list(tofftl.get(time_str, []))))
+        row["Training off the Line or Frosting?"] = ", ".join(sorted(list(training.get(time_str, []))))
         rows.append(row)
     out_df = pd.DataFrame(rows, columns=["Time"] + FINAL_SCHEDULE_ROW_ORDER)
     final_df = out_df.set_index("Time").transpose().reset_index().rename(columns={'index':'Position'})
