@@ -159,8 +159,17 @@ with main_col1:
 with main_col2:
     st.subheader("Active Scheduling Rules")
     st.write("Changes made here apply only to your current session.")
+
+    # This is the corrected text block
+    label_text = (
+        "Edit the rules for this session here. It's not as complex as it seems at first glance!\n\n"
+        "I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. "
+        "You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.\n\n"
+        "You get the point, I'll stop rambling lol."
+    )
+
     edited_rules = st.text_area(
-        "Edit the rules for this session here. I promise it's not nearly as complex as it seems at first glance lol. It's pretty self-explanatory, you'll see how to edit it all to have the rules be whatever you want. <br> I've input presets, which you'll see. Rn it has it so you can only be on LB twice in a row before 12:30 pm or after 7:30 pm, when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.\n\n\n\n You get the point, I'll stop rambling lol",
+        label=label_text, # Use the formatted label here
         value=st.session_state.rules_text,
         height=300
     )
