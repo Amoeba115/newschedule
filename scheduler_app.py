@@ -134,7 +134,7 @@ main_col1, main_col2 = st.columns(2)
 with main_col1:
     st.subheader("Schedule Overrides")
     # NEW: Added subtitle text below the header
-    st.write("Here you can pin an employee to a specific role and time. This will override any rules.")
+    st.write("This is for if you need a specific employee in a specific position at a given time. For example, if someone is doing Shift Lead Sidekick and you need them on Conductor from 3:00 pm to 5:30 pm or smth.")
     
     for i, override in enumerate(st.session_state.overrides):
         emp, pos = override.get('employee', 'N/A'), override.get('position', 'N/A')
