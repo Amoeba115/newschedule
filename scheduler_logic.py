@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version with Training End Time)
+# File: scheduler_logic.py (Final Version with Group Rules)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -26,26 +26,21 @@ def load_config(filepath, default_value={}):
         return default_value
 
 def preprocess_employee_data(employee_data_list):
+    # (This function is unchanged)
     all_slots = []
     ref_date = datetime(1970, 1, 1).date()
     for emp_data in employee_data_list:
         name_parts = emp_data.get('Name', '').split(' ', 1)
         name = f"{name_parts[0]} {name_parts[1][0] if len(name_parts) > 1 and name_parts[1] else ''}.".strip()
         s_start, s_end = parse_time_input(emp_data.get('Shift Start'), ref_date), parse_time_input(emp_data.get('Shift End'), ref_date)
-        b_start = parse_time_input(emp_data.get('Break'), ref_date)
-        
-        # UPDATED: Now uses both start and end times for training
-        training_start = parse_time_input(emp_data.get('Training Start'), ref_date)
-        training_end = parse_time_input(emp_data.get('Training End'), ref_date)
-
+        b_start, t_start = parse_time_input(emp_data.get('Break'), ref_date), parse_time_input(emp_data.get('Training Start'), ref_date)
         b_end = b_start + pd.Timedelta(minutes=30) if pd.notna(b_start) else pd.NaT
-        t_end = training_end if pd.notna(training_end) else (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
-        
+        t_end = parse_time_input(emp_data.get('Training End'), ref_date) or (t_start + pd.Timedelta(minutes=60) if pd.notna(t_start) else pd.NaT)
         if pd.notna(s_start) and pd.notna(s_end):
             curr = s_start
             while curr < s_end:
                 on_break = pd.notna(b_start) and b_start <= curr < b_end
-                on_training = pd.notna(training_start) and training_start <= curr < t_end
+                on_training = pd.notna(t_start) and t_start <= curr < t_end
                 is_working = not (on_break or on_training)
                 all_slots.append({
                     'Time': curr, 'EmployeeName': name, 'IsWorking': is_working,
@@ -54,22 +49,29 @@ def preprocess_employee_data(employee_data_list):
                 curr += pd.Timedelta(minutes=30)
     return pd.DataFrame(all_slots) if all_slots else pd.DataFrame()
 
-# --- Core Logic (Unchanged) ---
+# --- Core Logic ---
 def is_assignment_valid(employee, position, employee_states, rules):
-    # ... (no changes in this function)
     state = employee_states.get(employee, {})
     last_pos = state.get('last_pos')
     time_in_pos = state.get('time_in_pos', 0)
+    
     for rule in rules.get('position_rules', []):
         rule_positions = rule.get('position', [])
         rule_positions = rule_positions if isinstance(rule_positions, list) else [rule_positions]
+        
         if position in rule_positions:
+            # Check standard consecutive slots rule
             if position == last_pos and time_in_pos >= rule.get('max_consecutive_slots', 99):
                 return False
+            
+            # UPDATED: Check for the new group-based consecutive slots rule
+            if 'max_consecutive_slots_in_group' in rule:
+                if last_pos in rule_positions and time_in_pos >= rule['max_consecutive_slots_in_group']:
+                    return False
     return True
 
 def calculate_assignment_score(assignments, employee_states, rules):
-    # ... (no changes in this function)
+    # (This function is unchanged)
     score = 0
     strategy = rules.get('prioritization_strategy', {})
     consistency_roles = strategy.get('focus_on_consistency_for', [])
@@ -86,37 +88,56 @@ def calculate_assignment_score(assignments, employee_states, rules):
     return score
 
 def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules):
-    # ... (no changes in this function)
     if time_idx >= len(time_slots): return True, schedule
+
     current_time_slot_str = time_slots[time_idx]
     pre_assigned_positions = set(schedule[current_time_slot_str].keys())
     positions_to_fill = [p for p in WORK_POSITIONS if p not in pre_assigned_positions]
     available_employees = sorted(list(availability.get(current_time_slot_str, [])))
     positions_to_fill = positions_to_fill[:len(available_employees)]
+
     best_permutation, best_score = None, -float('inf')
+
     for p in permutations(available_employees):
         current_assignments = {pos: emp for pos, emp in zip(positions_to_fill, p)}
         if all(is_assignment_valid(emp, pos, employee_states, rules) for pos, emp in current_assignments.items()):
             score = calculate_assignment_score(current_assignments, employee_states, rules)
             if score > best_score:
                 best_score, best_permutation = score, current_assignments
+
     if best_permutation is not None:
         new_states = employee_states.copy()
         full_slot_assignments = {**schedule[current_time_slot_str], **best_permutation}
         for pos, emp in full_slot_assignments.items():
             state = employee_states.get(emp, {})
-            history = (state.get('history', []) + [pos])[-3:]
+            last_pos = state.get('last_pos')
+            
+            # UPDATED: Determine if the new position is in the same group as the last
+            in_same_group = False
+            for rule in rules.get('position_rules', []):
+                if 'max_consecutive_slots_in_group' in rule:
+                    group_positions = rule.get('position', [])
+                    if pos in group_positions and last_pos in group_positions:
+                        in_same_group = True
+                        break
+
+            time_in_pos = state.get('time_in_pos', 0) + 1 if (pos == last_pos or in_same_group) else 1
+            
             new_states[emp] = {
                 'last_pos': pos,
-                'time_in_pos': state.get('time_in_pos', 0) + 1 if pos == state.get('last_pos') else 1,
-                'history': history
+                'time_in_pos': time_in_pos,
+                'history': (state.get('history', []) + [pos])[-3:]
             }
+            
         schedule[current_time_slot_str].update(best_permutation)
         is_solved, final_schedule = solve_schedule_recursive(time_idx + 1, time_slots, availability, schedule, new_states, rules)
         if is_solved: return True, final_schedule
+
     return False, None
 
+
 def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list):
+    # This main function is unchanged
     rules = load_config("rules.yaml")
     overrides = load_config("overrides.yaml", default_value=[])
     df_long = preprocess_employee_data(employee_data_list)
@@ -128,7 +149,7 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         slot_data = df_long[df_long['Time'] == time_dt]
         availability[time_str] = set(slot_data[slot_data['IsWorking']]['EmployeeName'])
         breaks[time_str] = set(slot_data[slot_data['IsOnBreak']]['EmployeeName'])
-        training[time_str] = set(slot_data[slot_data['IsOnTraining']]['EmployeeName']) # Changed from ToffTL
+        training[time_str] = set(slot_data[slot_data['IsOnTraining']]['EmployeeName'])
     schedule_assignments = {t: {} for t in time_slots_str}
     ref_date = datetime(1970, 1, 1).date()
     for override in overrides:
