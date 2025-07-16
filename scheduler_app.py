@@ -139,11 +139,11 @@ if st.session_state.employee_data:
 main_col1, main_col2 = st.columns(2)
 with main_col1:
     st.subheader("Schedule Overrides")
-    st.write("Pin an employee to a specific role. This will override all other rules.")
+    st.write("This is for if you need a certain employee on a specific position for a given period of time. For example, if someone has Shift Lead Sidekick so you need them on Conductor from 3:30 pm to 5:00 pm")
     for i, override in enumerate(st.session_state.overrides):
         emp, pos = override.get('employee', 'N/A'), override.get('position', 'N/A')
         st.markdown(f"`{emp}` in `{pos}` from `{override.get('start_time')}` to `{override.get('end_time')}`")
-        if st.button(f"Remove##{i}", key=f"del_ovr_{i}"):
+        if st.button(f"Remove #{i}", key=f"del_ovr_{i}"):
             st.session_state.overrides.pop(i)
             st.rerun()
     with st.expander("Add New Override"):
