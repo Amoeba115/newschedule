@@ -162,8 +162,8 @@ with main_col2:
 
     # This text block now uses \n\n to create blank lines between paragraphs.
     label_text = (
-        "Edit the rules for this session here. It's not as complex as it seems at first glance!\n\n"
-        "I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. "
+        "Edit the rules for this session here. I promise it's not as complex as it might look at first lol\n\n"
+        "\n\nI've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. "
         "You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.\n\n"
         "You get the point, I'll stop rambling lol."
     )
