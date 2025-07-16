@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Updated Label)
+# File: scheduler_app.py (Final Version with UI Tweaks)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -8,9 +8,8 @@ import os
 
 from scheduler_logic import create_rule_based_schedule, parse_time_input, WORK_POSITIONS
 
-# --- Helper Functions (Unchanged) ---
+# --- Helper Functions ---
 def parse_summary_file(file_content):
-    # ... (no changes in this function)
     employees, current_employee = [], {}
     for line in file_content.splitlines():
         line = line.strip()
@@ -25,7 +24,6 @@ def parse_summary_file(file_content):
     return employees
 
 def format_employee_data_for_download(employee_data_list):
-    # ... (no changes in this function)
     summary_string = ""
     for i, emp_data in enumerate(employee_data_list):
         summary_string += f"--- Employee {i+1} ---\n"
@@ -33,16 +31,16 @@ def format_employee_data_for_download(employee_data_list):
         summary_string += f"Shift Start: {emp_data.get('Shift Start', '')}\n"
         summary_string += f"Shift End: {emp_data.get('Shift End', '')}\n"
         summary_string += f"Break: {emp_data.get('Break', '')}\n"
-        has_tofftl = emp_data.get('Has ToffTL', 'No').lower() == 'yes'
-        # UPDATED The key used for saving/loading data
-        summary_string += f"Training off the Line or Frosting?: {'Yes' if has_tofftl else 'No'}\n"
-        if has_tofftl:
+        has_training = emp_data.get('Training off the Line or Frosting?', 'No').lower() == 'yes'
+        summary_string += f"Training off the Line or Frosting?: {'Yes' if has_training else 'No'}\n"
+        if has_training:
             summary_string += f"Training Start: {emp_data.get('Training Start', '')}\n"
+            summary_string += f"Training End: {emp_data.get('Training End', '')}\n" # Added End Time
         summary_string += "\n"
     return summary_string.strip()
 
 
-# --- Page Configuration & State Initialization (Unchanged) ---
+# --- Page Configuration & State Initialization ---
 st.set_page_config(page_title="Employee Scheduler", layout="wide")
 # ... (styling and state initialization are unchanged)
 if 'employee_data' not in st.session_state:
@@ -75,15 +73,6 @@ store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
-col1, col2 = st.sidebar.columns(2)
-if col1.button("Add Employee", use_container_width=True):
-    st.session_state.employee_data.append({})
-    st.rerun()
-if col2.button("Remove Last", use_container_width=True):
-    if st.session_state.employee_data:
-        st.session_state.employee_data.pop()
-        st.rerun()
-
 employee_ui_list = []
 employee_names_for_override = []
 for i, emp in enumerate(st.session_state.employee_data):
@@ -93,18 +82,18 @@ for i, emp in enumerate(st.session_state.employee_data):
     shift_end = st.sidebar.text_input("Shift End", value=emp.get("Shift End", ""), key=f"s_end_{i}")
     break_time = st.sidebar.text_input("Break", value=emp.get("Break", ""), key=f"break_{i}")
     
-    # UPDATED The UI label for the selectbox
     has_training = st.sidebar.selectbox("Training off the Line or Frosting?", ["No", "Yes"], 
                                         index=1 if emp.get("Training off the Line or Frosting?", "No").lower() == 'yes' else 0, 
                                         key=f"has_training_{i}")
-    training_start = ""
+    training_start, training_end = "", ""
     if has_training == "Yes":
-        # UPDATED The UI label for the text input
         training_start = st.sidebar.text_input("Training Start", value=emp.get("Training Start", ""), key=f"training_s_{i}")
+        training_end = st.sidebar.text_input("Training End", value=emp.get("Training End", ""), key=f"training_e_{i}") # Added End Time input
     
     current_employee_data = {
         "Name": name, "Shift Start": shift_start, "Shift End": shift_end,
-        "Break": break_time, "Training off the Line or Frosting?": has_training, "Training Start": training_start
+        "Break": break_time, "Training off the Line or Frosting?": has_training, 
+        "Training Start": training_start, "Training End": training_end # Added End Time data
     }
     employee_ui_list.append(current_employee_data)
     if name:
@@ -112,12 +101,21 @@ for i, emp in enumerate(st.session_state.employee_data):
             employee_names_for_override.append(f"{name.split(' ')[0]} {name.split(' ')[1][0] if len(name.split(' ')) > 1 and name.split(' ')[1] else ''}.")
         except IndexError:
             employee_names_for_override.append(name)
-
 st.session_state.employee_data = employee_ui_list
+
+# MOVED the Add/Remove buttons to be below the employee data section
+st.sidebar.markdown("---")
+col1, col2 = st.sidebar.columns(2)
+if col1.button("Add Employee", use_container_width=True):
+    st.session_state.employee_data.append({})
+    st.rerun()
+if col2.button("Remove Last", use_container_width=True):
+    if st.session_state.employee_data:
+        st.session_state.employee_data.pop()
+        st.rerun()
 
 # Download Button
 st.sidebar.markdown("---")
-# (This section is unchanged)
 if st.session_state.employee_data:
     download_data = format_employee_data_for_download(st.session_state.employee_data)
     if download_data.strip():
@@ -127,8 +125,8 @@ if st.session_state.employee_data:
         )
 
 # Main Content Area (Unchanged)
-# ... (Override management and rule editor are unchanged)
 main_col1, main_col2 = st.columns(2)
+# ... (Override and Rule editors are unchanged)
 with main_col1:
     st.subheader("Schedule Overrides")
     for i, override in enumerate(st.session_state.overrides):
