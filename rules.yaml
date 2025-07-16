@@ -3,17 +3,22 @@
 
 # --- Position-Specific Rules ---
 position_rules:
+  # This rule is ALWAYS active because it has no time window.
   - position: Conductor
     max_consecutive_slots: 2
     must_start_on_the_hour: true
 
+  # This group rule is ONLY active BEFORE 11:00 AM.
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
-    # NEW RULE: An employee can only spend 30 minutes total across ALL Line Buster roles.
-    max_consecutive_slots_in_group: 1
-    # The old rule still applies to prevent, for example, two back-to-back Line Buster 1 shifts
-    # if the group rule were to be relaxed in the future.
-    max_consecutive_slots: 1
+    end_time: "11:00 AM"
+    max_consecutive_slots_in_group: 2 # More lenient during the morning rush
 
+  # This group rule is ONLY active AFTER 11:00 AM.
+  - position: [Line Buster 1, Line Buster 2, Line Buster 3]
+    start_time: "11:00 AM"
+    max_consecutive_slots_in_group: 1 # Stricter during the rest of the day
+
+  # This rule is ALWAYS active.
   - position: [Handout, Expo, Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
 
