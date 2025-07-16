@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version)
+# File: scheduler_logic.py (Final Version with Dynamic Positions)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -6,11 +6,12 @@ from datetime import datetime, time
 from itertools import permutations
 
 # --- Configuration & Helper Functions ---
-FINAL_SCHEDULE_ROW_ORDER = [
+# These are now the "base" lists. The final lists are generated dynamically.
+BASE_FINAL_SCHEDULE_ROW_ORDER = [
     "Handout", "Line Buster 1", "Conductor", "Line Buster 2", "Expo",
     "Drink Maker 1", "Drink Maker 2", "Line Buster 3", "Break", "Training off the Line or Frosting?"
 ]
-WORK_POSITIONS = [p for p in FINAL_SCHEDULE_ROW_ORDER if p not in ["Break", "Training off the Line or Frosting?"]]
+BASE_WORK_POSITIONS = [p for p in BASE_FINAL_SCHEDULE_ROW_ORDER if p not in ["Break", "Training off the Line or Frosting?"]]
 
 def parse_time_input(time_val, ref_date):
     if pd.isna(time_val) or str(time_val).strip().upper() in ['N/A', '']: return pd.NaT
@@ -33,9 +34,11 @@ def preprocess_employee_data(employee_data_list):
         name_parts = emp_data.get('Name', '').split(' ', 1)
         name = f"{name_parts[0]} {name_parts[1][0] if len(name_parts) > 1 and name_parts[1] else ''}.".strip()
         s_start, s_end = parse_time_input(emp_data.get('Shift Start'), ref_date), parse_time_input(emp_data.get('Shift End'), ref_date)
-        b_start, t_start = parse_time_input(emp_data.get('Break'), ref_date), parse_time_input(emp_data.get('Training Start'), ref_date)
+        b_start = parse_time_input(emp_data.get('Break'), ref_date)
+        training_start = parse_time_input(emp_data.get('Training Start'), ref_date)
+        training_end = parse_time_input(emp_data.get('Training End'), ref_date)
         b_end = b_start + pd.Timedelta(minutes=30) if pd.notna(b_start) else pd.NaT
-        t_end = parse_time_input(emp_data.get('Training End'), ref_date) or (t_start + pd.Timedelta(minutes=60) if pd.notna(t_start) else pd.NaT)
+        t_end = training_end or (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
         if pd.notna(s_start) and pd.notna(s_end):
             curr = s_start
             while curr < s_end:
@@ -51,6 +54,7 @@ def preprocess_employee_data(employee_data_list):
 
 # --- Core Logic ---
 def is_assignment_valid(employee, position, time_slot_obj, employee_states, rules):
+    # (This function is unchanged)
     state = employee_states.get(employee, {})
     last_pos, time_in_pos = state.get('last_pos'), state.get('time_in_pos', 0)
     current_time = time_slot_obj.time()
@@ -67,6 +71,7 @@ def is_assignment_valid(employee, position, time_slot_obj, employee_states, rule
     return True
 
 def calculate_assignment_score(assignments, employee_states, rules):
+    # (This function is unchanged)
     score = 0
     strategy = rules.get('prioritization_strategy', {})
     consistency_roles = strategy.get('focus_on_consistency_for', [])
@@ -82,12 +87,13 @@ def calculate_assignment_score(assignments, employee_states, rules):
                 elif len(history) > 1 and history[-2] == pos: score -= 5
     return score
 
-def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules):
+def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules, work_positions):
+    # (This function is unchanged, but now uses the passed-in work_positions)
     if time_idx >= len(time_slots): return True, schedule
     current_time_slot_str = time_slots[time_idx]
     current_time_slot_obj = parse_time_input(current_time_slot_str, datetime(1970, 1, 1).date())
     pre_assigned = set(schedule[current_time_slot_str].keys())
-    positions_to_fill = [p for p in WORK_POSITIONS if p not in pre_assigned]
+    positions_to_fill = [p for p in work_positions if p not in pre_assigned]
     avail_emps = sorted(list(availability.get(current_time_slot_str, [])))
     positions_to_fill = positions_to_fill[:len(avail_emps)]
     best_perm, best_score = None, -float('inf')
@@ -107,12 +113,22 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
             time_in_pos = state.get('time_in_pos', 0) + 1 if (pos == last_pos or in_same_group) else 1
             new_states[emp] = {'last_pos': pos, 'time_in_pos': time_in_pos, 'history': (state.get('history', []) + [pos])[-3:]}
         schedule[current_time_slot_str].update(best_perm)
-        is_solved, final_schedule = solve_schedule_recursive(time_idx + 1, time_slots, availability, schedule, new_states, rules)
+        is_solved, final_schedule = solve_schedule_recursive(time_idx + 1, time_slots, availability, schedule, new_states, rules, work_positions)
         if is_solved: return True, final_schedule
     return False, None
 
-# UPDATED: The function now accepts a rules dictionary
-def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules):
+def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules, has_lobby=False):
+    # DYNAMICALLY create the position lists for this run
+    final_schedule_row_order = BASE_FINAL_SCHEDULE_ROW_ORDER.copy()
+    if has_lobby:
+        try:
+            expo_index = final_schedule_row_order.index("Expo")
+            final_schedule_row_order.insert(expo_index, "Greeter")
+        except ValueError: # If Expo isn't found, just append it
+            final_schedule_row_order.append("Greeter")
+
+    work_positions = [p for p in final_schedule_row_order if p not in ["Break", "Training off the Line or Frosting?"]]
+
     overrides = load_config("overrides.yaml", default_value=[])
     df_long = preprocess_employee_data(employee_data_list)
     if df_long.empty: return "No employee data to process."
@@ -138,8 +154,9 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
                 if emp in availability.get(time_str, set()):
                     availability[time_str].remove(emp)
             curr += pd.Timedelta(minutes=30)
+    
     is_solved, final_work_assignments = solve_schedule_recursive(
-        0, time_slots_str, availability, schedule_assignments, {}, rules
+        0, time_slots_str, availability, schedule_assignments, {}, rules, work_positions
     )
     if not is_solved:
         return "ERROR: Could not find a valid schedule."
@@ -150,6 +167,8 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         row["Break"] = ", ".join(sorted(list(breaks.get(time_str, []))))
         row["Training off the Line or Frosting?"] = ", ".join(sorted(list(training.get(time_str, []))))
         rows.append(row)
-    out_df = pd.DataFrame(rows, columns=["Time"] + FINAL_SCHEDULE_ROW_ORDER)
+    
+    # Use the dynamically generated row order for the final output
+    out_df = pd.DataFrame(rows, columns=["Time"] + final_schedule_row_order)
     final_df = out_df.set_index("Time").transpose().reset_index().rename(columns={'index':'Position'})
     return final_df.to_csv(index=False)
