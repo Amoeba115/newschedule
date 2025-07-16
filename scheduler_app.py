@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Permanent Instructions)
+# File: scheduler_app.py (Final Version with Subtitle)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -57,15 +57,14 @@ st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration<
 
 # --- Permanent Instructions Display ---
 st.sidebar.markdown('<h3>Instructions</h3>', unsafe_allow_html=True)
-# This text is now hardcoded. To change it, edit this line directly.
 instructions_text = """
-Welcome to the scheduler tool! Enter your employees' work times below. 
+Welcome to the scheduler tool! Enter your employees' work times below.
 
 To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
 
 If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
 """
-st.sidebar.info(instructions_text) # Using st.info to give it a nice background
+st.sidebar.info(instructions_text)
 st.sidebar.markdown("---")
 
 
@@ -134,6 +133,9 @@ if st.session_state.employee_data:
 main_col1, main_col2 = st.columns(2)
 with main_col1:
     st.subheader("Schedule Overrides")
+    # NEW: Added subtitle text below the header
+    st.write("Here you can pin an employee to a specific role and time. This will override any rules.")
+    
     for i, override in enumerate(st.session_state.overrides):
         emp, pos = override.get('employee', 'N/A'), override.get('position', 'N/A')
         st.markdown(f"`{emp}` in `{pos}` from `{override.get('start_time')}` to `{override.get('end_time')}`")
