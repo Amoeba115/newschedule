@@ -93,7 +93,7 @@ employee_ui_list = []
 employee_names_for_override = []
 for i, emp in enumerate(st.session_state.employee_data):
     st.sidebar.markdown(f"--- **Employee {i+1}** ---")
-    name = st.sidebar.text_input("Name (first and last or just initials)", value=emp.get("Name", ""), key=f"name_{i}")
+    name = st.sidebar.text_input("Name (first and last, or first name last initial)", value=emp.get("Name", ""), key=f"name_{i}")
     shift_start = st.sidebar.text_input("Shift Start", value=emp.get("Shift Start", ""), key=f"s_start_{i}")
     shift_end = st.sidebar.text_input("Shift End", value=emp.get("Shift End", ""), key=f"s_end_{i}")
     break_time = st.sidebar.text_input("Break", value=emp.get("Break", ""), key=f"break_{i}")
