@@ -8,7 +8,7 @@ position_rules:
     max_consecutive_slots: 2
     must_start_on_the_hour: true
 
-  # This group rule is ONLY active BEFORE 12:30 AM.
+  # This group rule is ONLY active BEFORE 12:30 PM.
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
     end_time: "12:30 PM"
     max_consecutive_slots_in_group: 2 # More lenient during the morning, when it's cooler and you can have someone outside for longer if needed
