@@ -159,7 +159,7 @@ with main_col2:
     st.subheader("Active Scheduling Rules")
     st.write("Changes made here apply only to your current session.")
     edited_rules = st.text_area(
-    "Edit the rules for this session here. I promise it's not nearly as complex as it seems at first glance lol. It's pretty self-explanatory, you'll see how to edit it all to have the rules be whatever you want. \n\n\nI've input presets, which you'll see. Rn it has it so you can only be on LB twice in a row before 12:30 pm or after 7:30 pm, when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings./n/n/nYou get the point, I'll stop rambling lol",
+    "Edit the rules for this session here. I promise it's not nearly as complex as it seems at first glance lol. It's pretty self-explanatory, you'll see how to edit it all to have the rules be whatever you want. \n\n\n\nI've input presets, which you'll see. Rn it has it so you can only be on LB twice in a row before 12:30 pm or after 7:30 pm, when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.\n\n\n\nYou get the point, I'll stop rambling lol",
         value=st.session_state.rules_text,
         height=300
     )
