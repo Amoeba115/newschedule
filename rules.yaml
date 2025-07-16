@@ -19,7 +19,7 @@ position_rules:
     end_time: "7:30 PM"
     max_consecutive_slots_in_group: 1 # Stricter during the rest of the day, thought if you want you can change it to be whatever hours you like
 
-  # This rule is ALWAYS active.
+  # These rules are ALWAYS active since there's no time window. You can add a time window using the formatting you see on the last rule, or you can change which positions are in which rules, or whatever else you want
   - position: [Handout, Expo]
     max_consecutive_slots: 1
 
