@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Correct Instructions)
+# File: scheduler_app.py (Final Version with Permanent Instructions)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -7,9 +7,6 @@ import yaml
 import os
 
 from scheduler_logic import create_rule_based_schedule, parse_time_input, WORK_POSITIONS
-
-# --- Constants ---
-INSTRUCTIONS_FILE = "instructions.txt"
 
 # --- Helper Functions ---
 def parse_summary_file(file_content):
@@ -58,23 +55,17 @@ if 'overrides' not in st.session_state:
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
-# --- Instructions Editor ---
+# --- Permanent Instructions Display ---
 st.sidebar.markdown('<h3>Instructions</h3>', unsafe_allow_html=True)
-try:
-    with open(INSTRUCTIONS_FILE, 'r') as f:
-        instructions_text = f.read()
-except FileNotFoundError:
-    # UPDATED: The user's custom paragraph is now the default text
-    instructions_text = "Welcome to the scheduler tool! Enter your employees' work times below. To ensure you never have to enter it by hand more than once (for example if you have to refresh the page or smth), there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read. \n\n\nIf anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506"
-edited_instructions = st.sidebar.text_area(
-    label="Edit Instructions", # UPDATED: The label is now more concise
-    value=instructions_text,
-    height=250 # Increased height to better fit the text
-)
-if st.sidebar.button("Save Instructions", use_container_width=True):
-    with open(INSTRUCTIONS_FILE, 'w') as f:
-        f.write(edited_instructions)
-    st.sidebar.success("Instructions saved!")
+# This text is now hardcoded. To change it, edit this line directly.
+instructions_text = """
+Welcome to the scheduler tool! Enter your employees' work times below. 
+
+To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
+
+If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
+"""
+st.sidebar.info(instructions_text) # Using st.info to give it a nice background
 st.sidebar.markdown("---")
 
 
@@ -84,7 +75,6 @@ uploaded_file = st.sidebar.file_uploader("Upload an employee data file", type=["
 if uploaded_file is not None:
     file_content = uploaded_file.getvalue().decode("utf-8")
     st.session_state.employee_data = parse_summary_file(file_content)
-    st.success("Data loaded successfully!")
     st.rerun()
 
 # Store Hours
@@ -110,17 +100,17 @@ for i, emp in enumerate(st.session_state.employee_data):
     shift_start = st.sidebar.text_input("Shift Start", value=emp.get("Shift Start", ""), key=f"s_start_{i}")
     shift_end = st.sidebar.text_input("Shift End", value=emp.get("Shift End", ""), key=f"s_end_{i}")
     break_time = st.sidebar.text_input("Break", value=emp.get("Break", ""), key=f"break_{i}")
-    has_training = st.sidebar.selectbox("Training off the Line or Frosting?", ["No", "Yes"], 
-                                        index=1 if emp.get("Training off the Line or Frosting?", "No").lower() == 'yes' else 0, 
+    has_training = st.sidebar.selectbox("Training off the Line or Frosting?", ["No", "Yes"],
+                                        index=1 if emp.get("Training off the Line or Frosting?", "No").lower() == 'yes' else 0,
                                         key=f"has_training_{i}")
     training_start, training_end = "", ""
     if has_training == "Yes":
         training_start = st.sidebar.text_input("Training Start", value=emp.get("Training Start", ""), key=f"training_s_{i}")
         training_end = st.sidebar.text_input("Training End", value=emp.get("Training End", ""), key=f"training_e_{i}")
-    
+
     current_employee_data = {
         "Name": name, "Shift Start": shift_start, "Shift End": shift_end,
-        "Break": break_time, "Training off the Line or Frosting?": has_training, 
+        "Break": break_time, "Training off the Line or Frosting?": has_training,
         "Training Start": training_start, "Training End": training_end
     }
     employee_ui_list.append(current_employee_data)
