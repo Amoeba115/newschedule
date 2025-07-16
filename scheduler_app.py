@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Lobby Checkbox)
+# File: scheduler_app.py (Corrected for Import Error)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -6,10 +6,11 @@ from io import StringIO
 import yaml
 import os
 
-from scheduler_logic import create_rule_based_schedule, parse_time_input, WORK_POSITIONS
+from scheduler_logic import create_rule_based_schedule, parse_time_input, UI_WORK_POSITIONS
 
 # --- Helper Functions ---
 def parse_summary_file(file_content):
+    # (This function is unchanged)
     employees, current_employee = [], {}
     for line in file_content.splitlines():
         line = line.strip()
@@ -24,6 +25,7 @@ def parse_summary_file(file_content):
     return employees
 
 def format_employee_data_for_download(employee_data_list):
+    # (This function is unchanged)
     summary_string = ""
     for i, emp_data in enumerate(employee_data_list):
         summary_string += f"--- Employee {i+1} ---\n"
@@ -77,10 +79,7 @@ if uploaded_file is not None:
 st.sidebar.markdown('<h3>Store Settings</h3>', unsafe_allow_html=True)
 store_open_time_str = st.sidebar.text_input("Store Open Time", "7:30 AM")
 store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
-
-# NEW: Checkbox for Lobby
 has_lobby = st.sidebar.checkbox("Does your store have a lobby?", value=True)
-
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
@@ -99,7 +98,6 @@ for i, emp in enumerate(st.session_state.employee_data):
     if has_training == "Yes":
         training_start = st.sidebar.text_input("Training Start", value=emp.get("Training Start", ""), key=f"training_s_{i}")
         training_end = st.sidebar.text_input("Training End", value=emp.get("Training End", ""), key=f"training_e_{i}")
-
     current_employee_data = {
         "Name": name, "Shift Start": shift_start, "Shift End": shift_end,
         "Break": break_time, "Training off the Line or Frosting?": has_training,
@@ -145,7 +143,8 @@ with main_col1:
     with st.expander("Add New Override"):
         with st.form("new_override_form"):
             new_emp = st.selectbox("Employee", options=sorted(employee_names_for_override), key="new_emp")
-            new_pos = st.selectbox("Position", options=WORK_POSITIONS, key="new_pos")
+            # Corrected to use the imported UI_WORK_POSITIONS
+            new_pos = st.selectbox("Position", options=UI_WORK_POSITIONS, key="new_pos")
             new_start = st.text_input("Start Time", key="new_start")
             new_end = st.text_input("End Time", key="new_end")
             if st.form_submit_button("Add Override"):
@@ -180,7 +179,7 @@ if st.button("Generate Schedule", use_container_width=True):
                 schedule_output = create_rule_based_schedule(
                     store_open_dt.time(), store_close_dt.time(),
                     st.session_state.employee_data, session_rules,
-                    has_lobby=has_lobby  # Pass the checkbox state
+                    has_lobby=has_lobby
                 )
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output: st.error(schedule_output)
