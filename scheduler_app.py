@@ -64,9 +64,9 @@ try:
     with open(INSTRUCTIONS_FILE, 'r') as f:
         instructions_text = f.read()
 except FileNotFoundError:
-    instructions_text = "Welcome to the scheduler!\n\nEnter employee info below or upload a file."
+    instructions_text = "Enter employee info below or upload a file. Please only upload files that you got by downloading them from this page based on the info you entered. Otherwise it won't know how to handle the data lol"
 edited_instructions = st.sidebar.text_area(
-    "Edit the instructions that appear at the top of the sidebar.",
+    "",
     value=instructions_text,
     height=150
 )
