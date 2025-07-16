@@ -66,7 +66,7 @@ try:
 except FileNotFoundError:
     instructions_text = "Enter employee info below or upload. Please only upload files that you got from this page so it reads the data correctly."
 edited_instructions = st.sidebar.text_area(
-    "Welcome to the scheduler tool! Enter your employees' work times below. To ensure you never have to enter it by hand more than once (for example if you have to refresh the page or smth), there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read. \n\n\nI",
+    "Welcome to the scheduler tool! Enter your employees' work times below. To ensure you never have to enter it by hand more than once (for example if you have to refresh the page or smth), there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read. \n\n\nIf anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506",
     value=instructions_text,
     height=150
 )
