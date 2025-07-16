@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with UI Adjustments)
+# File: scheduler_app.py (Final Version with Lobby Checkbox)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -60,15 +60,8 @@ if 'rules_text' not in st.session_state:
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
-# Instructions Box
 st.sidebar.info("""
-Welcome to the scheduler tool! Enter your employees' work times below.
-
-To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
-
-Also, there's a bug I haven't figured out how to fix yet, so if you upload an employee data file, it might look like the site is bugging out and the data isn't loading in. Just click the little x that appears next to the file name and it'll stop the bugging and load the data. Ik it's weird, I haven't figured it out yet lol.
-
-If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
+Welcome to the scheduler tool! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.
 """)
 st.sidebar.markdown("---")
 
@@ -80,10 +73,14 @@ if uploaded_file is not None:
     st.session_state.employee_data = parse_summary_file(file_content)
     st.rerun()
 
-# Store Hours
-st.sidebar.markdown('<h3>Store Hours</h3>', unsafe_allow_html=True)
+# Store Hours & Settings
+st.sidebar.markdown('<h3>Store Settings</h3>', unsafe_allow_html=True)
 store_open_time_str = st.sidebar.text_input("Store Open Time", "7:30 AM")
 store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
+
+# NEW: Checkbox for Lobby
+has_lobby = st.sidebar.checkbox("Does your store have a lobby?", value=True)
+
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
@@ -116,7 +113,6 @@ for i, emp in enumerate(st.session_state.employee_data):
             employee_names_for_override.append(name)
 st.session_state.employee_data = employee_ui_list
 
-# Add/Remove Buttons now appear below the employee list
 col1, col2 = st.sidebar.columns(2)
 if col1.button("Add Employee", use_container_width=True):
     st.session_state.employee_data.append({})
@@ -159,7 +155,7 @@ with main_col2:
     st.subheader("Active Scheduling Rules")
     st.write("Changes made here apply only to your current session.")
     edited_rules = st.text_area(
-    "Edit the rules for this session here. I promise it's not nearly as complex as it seems at first glance lol. It's pretty self-explanatory, you'll see how to edit it all to have the rules be whatever you want. \n\n\n\n I've input presets, which you'll see. Rn it has it so you can only be on LB twice in a row before 12:30 pm or after 7:30 pm, when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.\n\n\n\n You get the point, I'll stop rambling lol",
+        "Edit Rules for this session",
         value=st.session_state.rules_text,
         height=300
     )
@@ -183,7 +179,8 @@ if st.button("Generate Schedule", use_container_width=True):
             with st.spinner("Generating schedule..."):
                 schedule_output = create_rule_based_schedule(
                     store_open_dt.time(), store_close_dt.time(),
-                    st.session_state.employee_data, session_rules
+                    st.session_state.employee_data, session_rules,
+                    has_lobby=has_lobby  # Pass the checkbox state
                 )
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output: st.error(schedule_output)
