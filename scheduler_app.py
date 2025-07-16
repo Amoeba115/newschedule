@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final, Corrected File Upload Logic)
+# File: scheduler_app.py (Final Version with Instructions)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -7,6 +7,9 @@ import yaml
 import os
 
 from scheduler_logic import create_rule_based_schedule, parse_time_input, WORK_POSITIONS
+
+# --- Constants ---
+INSTRUCTIONS_FILE = "instructions.txt"
 
 # --- Helper Functions ---
 def parse_summary_file(file_content):
@@ -55,6 +58,25 @@ if 'overrides' not in st.session_state:
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
+# --- NEW: Instructions Editor ---
+st.sidebar.markdown('<h3>Instructions</h3>', unsafe_allow_html=True)
+try:
+    with open(INSTRUCTIONS_FILE, 'r') as f:
+        instructions_text = f.read()
+except FileNotFoundError:
+    instructions_text = "Welcome to the scheduler!\n\nEnter employee info below or upload a file."
+edited_instructions = st.sidebar.text_area(
+    "Edit the instructions that appear at the top of the sidebar.",
+    value=instructions_text,
+    height=150
+)
+if st.sidebar.button("Save Instructions", use_container_width=True):
+    with open(INSTRUCTIONS_FILE, 'w') as f:
+        f.write(edited_instructions)
+    st.sidebar.success("Instructions saved!")
+st.sidebar.markdown("---")
+
+
 # File Uploader
 st.sidebar.markdown('<h3>Import Data</h3>', unsafe_allow_html=True)
 uploaded_file = st.sidebar.file_uploader("Upload an employee data file", type=["txt"])
@@ -79,7 +101,6 @@ if col2.button("Remove Last", use_container_width=True):
     if st.session_state.employee_data:
         st.session_state.employee_data.pop()
         st.rerun()
-
 employee_ui_list = []
 employee_names_for_override = []
 for i, emp in enumerate(st.session_state.employee_data):
@@ -118,6 +139,7 @@ if st.session_state.employee_data:
             mime="text/plain", use_container_width=True
         )
 
+# Main Content Area
 main_col1, main_col2 = st.columns(2)
 with main_col1:
     st.subheader("Schedule Overrides")
