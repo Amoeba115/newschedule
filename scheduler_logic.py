@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version with Shift Time Clamping)
+# File: scheduler_logic.py (Final Version with Corrected Time Logic)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -35,25 +35,25 @@ def preprocess_employee_data(employee_data_list, store_open_dt, store_close_dt):
         s_start = parse_time_input(emp_data.get('Shift Start'), ref_date)
         s_end = parse_time_input(emp_data.get('Shift End'), ref_date)
         
-        # --- NEW: Clamp shift times to store hours ---
         if pd.notna(s_start) and s_start < store_open_dt:
             s_start = store_open_dt
         if pd.notna(s_end) and s_end > store_close_dt:
             s_end = store_close_dt
-        # --- End of new logic ---
 
         b_start = parse_time_input(emp_data.get('Break'), ref_date)
         training_start = parse_time_input(emp_data.get('Training Start'), ref_date)
         training_end = parse_time_input(emp_data.get('Training End'), ref_date)
         
         b_end = b_start + pd.Timedelta(minutes=30) if pd.notna(b_start) else pd.NaT
-        t_end = training_end or (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
+        # CORRECTED: Ensure t_end is a valid time before comparison
+        t_end = training_end if pd.notna(training_end) else (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
         
         if pd.notna(s_start) and pd.notna(s_end):
             curr = s_start
             while curr < s_end:
                 on_break = pd.notna(b_start) and b_start <= curr < b_end
-                on_training = pd.notna(t_start) and t_start <= curr < t_end
+                # CORRECTED: Only perform the check if training_start and t_end are valid times
+                on_training = pd.notna(training_start) and pd.notna(t_end) and training_start <= curr < t_end
                 is_working = not (on_break or on_training)
                 all_slots.append({
                     'Time': curr, 'EmployeeName': name, 'IsWorking': is_working,
@@ -64,7 +64,6 @@ def preprocess_employee_data(employee_data_list, store_open_dt, store_close_dt):
 
 # --- Core Logic ---
 def is_assignment_valid(employee, position, time_slot_obj, employee_states, rules):
-    # (This function is unchanged)
     state = employee_states.get(employee, {})
     last_pos, time_in_pos = state.get('last_pos'), state.get('time_in_pos', 0)
     current_time = time_slot_obj.time()
@@ -81,7 +80,6 @@ def is_assignment_valid(employee, position, time_slot_obj, employee_states, rule
     return True
 
 def calculate_assignment_score(assignments, employee_states, rules):
-    # (This function is unchanged)
     score = 0
     strategy = rules.get('prioritization_strategy', {})
     consistency_roles = strategy.get('focus_on_consistency_for', [])
@@ -98,7 +96,6 @@ def calculate_assignment_score(assignments, employee_states, rules):
     return score
 
 def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules, work_positions):
-    # (This function is unchanged)
     if time_idx >= len(time_slots): return True, schedule
     current_time_slot_str = time_slots[time_idx]
     current_time_slot_obj = parse_time_input(current_time_slot_str, datetime(1970, 1, 1).date())
@@ -132,13 +129,10 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
     if not has_lobby:
         final_schedule_row_order.remove("Greeter")
     work_positions = [p for p in final_schedule_row_order if p not in ["Break", "Training off the Line or Frosting?"]]
-
-    # UPDATED: Pass store hours to the preprocessing function
     ref_date = datetime(1970, 1, 1).date()
     store_open_dt = datetime.combine(ref_date, store_open_time_obj)
     store_close_dt = datetime.combine(ref_date, store_close_time_obj)
     df_long = preprocess_employee_data(employee_data_list, store_open_dt, store_close_dt)
-    
     if df_long.empty: return "No employee data to process."
     time_slots_dt = sorted(df_long['Time'].unique())
     time_slots_str = [t.strftime('%I:%M %p').lstrip('0') for t in time_slots_dt]
@@ -149,7 +143,6 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         breaks[time_str] = set(slot_data[slot_data['IsOnBreak']]['EmployeeName'])
         training[time_str] = set(slot_data[slot_data['IsOnTraining']]['EmployeeName'])
     schedule_assignments = {t: {} for t in time_slots_str}
-    
     overrides = load_config("overrides.yaml", default_value=[])
     for override in overrides:
         emp, pos = override.get('employee'), override.get('position')
@@ -163,7 +156,6 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
                 if emp in availability.get(time_str, set()):
                     availability[time_str].remove(emp)
             curr += pd.Timedelta(minutes=30)
-    
     is_solved, final_work_assignments = solve_schedule_recursive(
         0, time_slots_str, availability, schedule_assignments, {}, rules, work_positions
     )
@@ -176,7 +168,6 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         row["Break"] = ", ".join(sorted(list(breaks.get(time_str, []))))
         row["Training off the Line or Frosting?"] = ", ".join(sorted(list(training.get(time_str, []))))
         rows.append(row)
-    
     out_df = pd.DataFrame(rows, columns=["Time"] + final_schedule_row_order)
     final_df = out_df.set_index("Time").transpose().reset_index().rename(columns={'index':'Position'})
     return final_df.to_csv(index=False)
