@@ -1,8 +1,8 @@
-# File: scheduler_logic.py (Corrected for Import Error)
+# File: scheduler_logic.py (Final Version with Shift Time Clamping)
 import pandas as pd
 import yaml
 from io import StringIO
-from datetime import datetime
+from datetime import datetime, time
 from itertools import permutations
 
 # --- Configuration & Helper Functions ---
@@ -10,7 +10,6 @@ BASE_FINAL_SCHEDULE_ROW_ORDER = [
     "Handout", "Line Buster 1", "Conductor", "Line Buster 2", "Greeter", "Expo",
     "Drink Maker 1", "Drink Maker 2", "Line Buster 3", "Break", "Training off the Line or Frosting?"
 ]
-# NEW: A stable list for the UI to import for dropdowns.
 UI_WORK_POSITIONS = [p for p in BASE_FINAL_SCHEDULE_ROW_ORDER if p not in ["Break", "Training off the Line or Frosting?"]]
 
 def parse_time_input(time_val, ref_date):
@@ -19,7 +18,6 @@ def parse_time_input(time_val, ref_date):
     except ValueError: return pd.NaT
 
 def load_config(filepath, default_value={}):
-    # (This function is unchanged)
     try:
         with open(filepath, 'r') as file:
             config = yaml.safe_load(file)
@@ -27,17 +25,30 @@ def load_config(filepath, default_value={}):
     except FileNotFoundError:
         return default_value
 
-def preprocess_employee_data(employee_data_list):
-    # (This function is unchanged)
+def preprocess_employee_data(employee_data_list, store_open_dt, store_close_dt):
     all_slots = []
     ref_date = datetime(1970, 1, 1).date()
     for emp_data in employee_data_list:
         name_parts = emp_data.get('Name', '').split(' ', 1)
         name = f"{name_parts[0]} {name_parts[1][0] if len(name_parts) > 1 and name_parts[1] else ''}.".strip()
-        s_start, s_end = parse_time_input(emp_data.get('Shift Start'), ref_date), parse_time_input(emp_data.get('Shift End'), ref_date)
-        b_start, t_start = parse_time_input(emp_data.get('Break'), ref_date), parse_time_input(emp_data.get('Training Start'), ref_date)
+        
+        s_start = parse_time_input(emp_data.get('Shift Start'), ref_date)
+        s_end = parse_time_input(emp_data.get('Shift End'), ref_date)
+        
+        # --- NEW: Clamp shift times to store hours ---
+        if pd.notna(s_start) and s_start < store_open_dt:
+            s_start = store_open_dt
+        if pd.notna(s_end) and s_end > store_close_dt:
+            s_end = store_close_dt
+        # --- End of new logic ---
+
+        b_start = parse_time_input(emp_data.get('Break'), ref_date)
+        training_start = parse_time_input(emp_data.get('Training Start'), ref_date)
+        training_end = parse_time_input(emp_data.get('Training End'), ref_date)
+        
         b_end = b_start + pd.Timedelta(minutes=30) if pd.notna(b_start) else pd.NaT
-        t_end = parse_time_input(emp_data.get('Training End'), ref_date) or (t_start + pd.Timedelta(minutes=60) if pd.notna(t_start) else pd.NaT)
+        t_end = training_end or (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
+        
         if pd.notna(s_start) and pd.notna(s_end):
             curr = s_start
             while curr < s_end:
@@ -117,14 +128,17 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
     return False, None
 
 def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules, has_lobby=False):
-    # (This function is unchanged)
     final_schedule_row_order = BASE_FINAL_SCHEDULE_ROW_ORDER.copy()
     if not has_lobby:
         final_schedule_row_order.remove("Greeter")
     work_positions = [p for p in final_schedule_row_order if p not in ["Break", "Training off the Line or Frosting?"]]
 
-    overrides = load_config("overrides.yaml", default_value=[])
-    df_long = preprocess_employee_data(employee_data_list)
+    # UPDATED: Pass store hours to the preprocessing function
+    ref_date = datetime(1970, 1, 1).date()
+    store_open_dt = datetime.combine(ref_date, store_open_time_obj)
+    store_close_dt = datetime.combine(ref_date, store_close_time_obj)
+    df_long = preprocess_employee_data(employee_data_list, store_open_dt, store_close_dt)
+    
     if df_long.empty: return "No employee data to process."
     time_slots_dt = sorted(df_long['Time'].unique())
     time_slots_str = [t.strftime('%I:%M %p').lstrip('0') for t in time_slots_dt]
@@ -135,7 +149,8 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         breaks[time_str] = set(slot_data[slot_data['IsOnBreak']]['EmployeeName'])
         training[time_str] = set(slot_data[slot_data['IsOnTraining']]['EmployeeName'])
     schedule_assignments = {t: {} for t in time_slots_str}
-    ref_date = datetime(1970, 1, 1).date()
+    
+    overrides = load_config("overrides.yaml", default_value=[])
     for override in overrides:
         emp, pos = override.get('employee'), override.get('position')
         start_dt, end_dt = parse_time_input(override.get('start_time'), ref_date), parse_time_input(override.get('end_time'), ref_date)
