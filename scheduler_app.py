@@ -131,7 +131,7 @@ if st.session_state.employee_data:
 main_col1, main_col2 = st.columns(2)
 with main_col1:
     st.subheader("Schedule Overrides")
-    st.write("Pin an employee to a specific role. This will override all other rules.")
+    st.write("This is for if you need a certain employee on a specific position for a given period of time. For example, if someone has Shift Lead Sidekick so you need them on Conductor from 3:30 pm to 5:00 pm")
     for i, override in enumerate(st.session_state.overrides):
         emp, pos = override.get('employee', 'N/A'), override.get('position', 'N/A')
         st.markdown(f"`{emp}` in `{pos}` from `{override.get('start_time')}` to `{override.get('end_time')}`")
@@ -149,7 +149,6 @@ with main_col1:
                 st.rerun()
 with main_col2:
     st.subheader("Active Scheduling Rules")
-    
     st.markdown("""
     Edit the rules for this session here. I promise it's not as complex as it might look at first lol.
 
@@ -157,7 +156,6 @@ with main_col2:
     
     You get the point, I'll stop rambling lol.
     """)
-    
     edited_rules = st.text_area(
         label="Edit Rules for this session:",
         value=st.session_state.rules_text,
@@ -167,8 +165,6 @@ with main_col2:
 
 st.markdown("---")
 if st.button("Generate Schedule", use_container_width=True):
-    with open("overrides.yaml", 'w') as f:
-        yaml.dump(st.session_state.overrides, f, default_flow_style=False)
     try:
         session_rules = yaml.safe_load(st.session_state.rules_text)
     except yaml.YAMLError as e:
@@ -184,7 +180,8 @@ if st.button("Generate Schedule", use_container_width=True):
                 schedule_output = create_rule_based_schedule(
                     store_open_dt.time(), store_close_dt.time(),
                     st.session_state.employee_data, session_rules,
-                    has_lobby=has_lobby
+                    has_lobby=has_lobby,
+                    overrides=st.session_state.overrides
                 )
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output: st.error(schedule_output)
