@@ -151,7 +151,7 @@ with main_col1:
                 st.rerun()
 with main_col2:
     st.subheader("Active Scheduling Rules")
-    st.markdown("""
+    st.markdown("""
     Edit the rules for this session here. I promise it's not as complicated as it might look at first lol.
     
     I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.
