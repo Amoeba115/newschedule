@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Session-Based Overrides)
+# File: scheduler_app.py (Final Version)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -39,13 +39,6 @@ def format_employee_data_for_download(employee_data_list):
         summary_string += "\n"
     return summary_string.strip()
 
-def load_default_rules():
-    try:
-        with open("rules.yaml", 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        return "# rules.yaml not found."
-
 # --- Page Configuration & State Initialization ---
 st.set_page_config(page_title="Employee Scheduler", layout="wide")
 if 'employee_data' not in st.session_state:
@@ -57,17 +50,22 @@ if 'overrides' not in st.session_state:
     else:
         st.session_state.overrides = []
 if 'rules_text' not in st.session_state:
-    st.session_state.rules_text = load_default_rules()
+    try:
+        with open("rules.yaml", 'r') as f:
+            st.session_state.rules_text = f.read()
+    except FileNotFoundError:
+        st.session_state.rules_text = "# rules.yaml not found."
 
 # --- UI Rendering ---
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
-st.sidebar.info("""Welcome to the scheduler tool! Enter your employees' work times below.To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
 
-Also, there's a bug I haven't figured out how to fix yet, so if you upload an employee data file, it might look like the site is bugging out and the data isn't loading in. Just click the little x that appears next to the file name and it'll stop the bugging and load the data. Ik it's weird, I haven't figured it out yet lol.
+st.sidebar.info("""
+Welcome to the scheduler tool! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.
+""")
+st.sidebar.markdown("---")
 
-If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.""")
-st.sidebar.markdown("---")# File Uploader
+# File Uploader
 st.sidebar.markdown('<h3>Import Data</h3>', unsafe_allow_html=True)
 uploaded_file = st.sidebar.file_uploader("Upload an employee data file", type=["txt"])
 if uploaded_file is not None:
@@ -151,15 +149,17 @@ with main_col1:
                 st.rerun()
 with main_col2:
     st.subheader("Active Scheduling Rules")
-    st.markdown("""
-    Edit the rules for this session here. I promise it's not as complicated as it might look at first lol.
     
+    st.markdown("""
+    Edit the rules for this session here. I promise it's not as complex as it might look at first lol.
+
     I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.
     
     You get the point, I'll stop rambling lol.
     """)
-edited_rules = st.text_area(
-        "Edit Rules for this session",
+    
+    edited_rules = st.text_area(
+        label="Edit Rules for this session:",
         value=st.session_state.rules_text,
         height=300
     )
@@ -167,6 +167,8 @@ edited_rules = st.text_area(
 
 st.markdown("---")
 if st.button("Generate Schedule", use_container_width=True):
+    with open("overrides.yaml", 'w') as f:
+        yaml.dump(st.session_state.overrides, f, default_flow_style=False)
     try:
         session_rules = yaml.safe_load(st.session_state.rules_text)
     except yaml.YAMLError as e:
@@ -182,8 +184,7 @@ if st.button("Generate Schedule", use_container_width=True):
                 schedule_output = create_rule_based_schedule(
                     store_open_dt.time(), store_close_dt.time(),
                     st.session_state.employee_data, session_rules,
-                    has_lobby=has_lobby,
-                    overrides=st.session_state.overrides
+                    has_lobby=has_lobby
                 )
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output: st.error(schedule_output)
