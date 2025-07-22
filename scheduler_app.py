@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with Corrected Line Breaks)
+# File: scheduler_app.py (Final Version with Session-Based Overrides)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -10,7 +10,6 @@ from scheduler_logic import create_rule_based_schedule, parse_time_input, UI_WOR
 
 # --- Helper Functions ---
 def parse_summary_file(file_content):
-    # (This function is unchanged)
     employees, current_employee = [], {}
     for line in file_content.splitlines():
         line = line.strip()
@@ -25,7 +24,6 @@ def parse_summary_file(file_content):
     return employees
 
 def format_employee_data_for_download(employee_data_list):
-    # (This function is unchanged)
     summary_string = ""
     for i, emp_data in enumerate(employee_data_list):
         summary_string += f"--- Employee {i+1} ---\n"
@@ -41,6 +39,13 @@ def format_employee_data_for_download(employee_data_list):
         summary_string += "\n"
     return summary_string.strip()
 
+def load_default_rules():
+    try:
+        with open("rules.yaml", 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        return "# rules.yaml not found."
+
 # --- Page Configuration & State Initialization ---
 st.set_page_config(page_title="Employee Scheduler", layout="wide")
 if 'employee_data' not in st.session_state:
@@ -52,25 +57,12 @@ if 'overrides' not in st.session_state:
     else:
         st.session_state.overrides = []
 if 'rules_text' not in st.session_state:
-    try:
-        with open("rules.yaml", 'r') as f:
-            st.session_state.rules_text = f.read()
-    except FileNotFoundError:
-        st.session_state.rules_text = "# rules.yaml not found."
+    st.session_state.rules_text = load_default_rules()
 
 # --- UI Rendering ---
-st.markdown('<h1 style="color: #4CAF50;">Swig employee schedule maker!</h1>', unsafe_allow_html=True)
-st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Start Here!</h1>', unsafe_allow_html=True)
-
-st.sidebar.info("""
-Welcome to the scheduler tool! Enter your employees' work times below.
-
-To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
-
-Also, there's a bug I haven't figured out how to fix yet, so if you upload an employee data file, it might look like the site is bugging out and the data isn't loading in. Just click the little x that appears next to the file name and it'll stop the bugging and load the data. Ik it's weird, I haven't figured it out yet lol.
-
-If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
-""")
+st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
+st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
+st.sidebar.info("Welcome to the scheduler! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.")
 st.sidebar.markdown("---")
 
 # File Uploader
@@ -85,7 +77,7 @@ if uploaded_file is not None:
 st.sidebar.markdown('<h3>Store Settings</h3>', unsafe_allow_html=True)
 store_open_time_str = st.sidebar.text_input("Store Open Time", "7:30 AM")
 store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
-has_lobby = st.sidebar.checkbox("Check this box if your store has a lobby (toggles the Greeter position)", value=True)
+has_lobby = st.sidebar.checkbox("Does your store have a lobby?", value=True)
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
@@ -93,7 +85,7 @@ employee_ui_list = []
 employee_names_for_override = []
 for i, emp in enumerate(st.session_state.employee_data):
     st.sidebar.markdown(f"--- **Employee {i+1}** ---")
-    name = st.sidebar.text_input("Name (first and last, or first name + last initial)", value=emp.get("Name", ""), key=f"name_{i}")
+    name = st.sidebar.text_input("Name", value=emp.get("Name", ""), key=f"name_{i}")
     shift_start = st.sidebar.text_input("Shift Start", value=emp.get("Shift Start", ""), key=f"s_start_{i}")
     shift_end = st.sidebar.text_input("Shift End", value=emp.get("Shift End", ""), key=f"s_end_{i}")
     break_time = st.sidebar.text_input("Break", value=emp.get("Break", ""), key=f"break_{i}")
@@ -139,11 +131,11 @@ if st.session_state.employee_data:
 main_col1, main_col2 = st.columns(2)
 with main_col1:
     st.subheader("Schedule Overrides")
-    st.write("This is for if you need a certain employee on a specific position for a given period of time. For example, if someone has Shift Lead Sidekick so you need them on Conductor from 3:30 pm to 5:00 pm")
+    st.write("Pin an employee to a specific role. This will override all other rules.")
     for i, override in enumerate(st.session_state.overrides):
         emp, pos = override.get('employee', 'N/A'), override.get('position', 'N/A')
         st.markdown(f"`{emp}` in `{pos}` from `{override.get('start_time')}` to `{override.get('end_time')}`")
-        if st.button(f"Remove #{i + 1}", key=f"del_ovr_{i}"):
+        if st.button(f"Remove##{i}", key=f"del_ovr_{i}"):
             st.session_state.overrides.pop(i)
             st.rerun()
     with st.expander("Add New Override"):
@@ -157,18 +149,9 @@ with main_col1:
                 st.rerun()
 with main_col2:
     st.subheader("Active Scheduling Rules")
-    
-    # CORRECTED: Use st.markdown for the instructions and a simple label for the text_area
-    st.markdown("""
-    Edit the rules for this session here. I promise it's not as complicated as it might look at first lol.
-
-    I've input presets, which you'll see. Currently, it allows for two consecutive Line Buster slots before 12:30 PM or after 7:30 PM when it's presumably cooler. You can edit that however you want. I'll probably change the presets in the winter to not have people outside too much in the colder mornings and evenings.
-    
-    You get the point, I'll stop rambling lol.
-    """)
-    
+    st.write("Changes made here apply only to your current session.")
     edited_rules = st.text_area(
-        label="Edit the rules for this session:",
+        "Edit Rules for this session",
         value=st.session_state.rules_text,
         height=300
     )
@@ -176,8 +159,6 @@ with main_col2:
 
 st.markdown("---")
 if st.button("Generate Schedule", use_container_width=True):
-    with open("overrides.yaml", 'w') as f:
-        yaml.dump(st.session_state.overrides, f, default_flow_style=False)
     try:
         session_rules = yaml.safe_load(st.session_state.rules_text)
     except yaml.YAMLError as e:
@@ -193,7 +174,8 @@ if st.button("Generate Schedule", use_container_width=True):
                 schedule_output = create_rule_based_schedule(
                     store_open_dt.time(), store_close_dt.time(),
                     st.session_state.employee_data, session_rules,
-                    has_lobby=has_lobby
+                    has_lobby=has_lobby,
+                    overrides=st.session_state.overrides
                 )
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output: st.error(schedule_output)
