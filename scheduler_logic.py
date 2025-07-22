@@ -1,4 +1,4 @@
-# File: scheduler_logic.py (Final Version with Corrected Time Logic)
+# File: scheduler_logic.py (Final Version)
 import pandas as pd
 import yaml
 from io import StringIO
@@ -31,28 +31,18 @@ def preprocess_employee_data(employee_data_list, store_open_dt, store_close_dt):
     for emp_data in employee_data_list:
         name_parts = emp_data.get('Name', '').split(' ', 1)
         name = f"{name_parts[0]} {name_parts[1][0] if len(name_parts) > 1 and name_parts[1] else ''}.".strip()
-        
-        s_start = parse_time_input(emp_data.get('Shift Start'), ref_date)
-        s_end = parse_time_input(emp_data.get('Shift End'), ref_date)
-        
-        if pd.notna(s_start) and s_start < store_open_dt:
-            s_start = store_open_dt
-        if pd.notna(s_end) and s_end > store_close_dt:
-            s_end = store_close_dt
-
+        s_start, s_end = parse_time_input(emp_data.get('Shift Start'), ref_date), parse_time_input(emp_data.get('Shift End'), ref_date)
+        if pd.notna(s_start) and s_start < store_open_dt: s_start = store_open_dt
+        if pd.notna(s_end) and s_end > store_close_dt: s_end = store_close_dt
         b_start = parse_time_input(emp_data.get('Break'), ref_date)
         training_start = parse_time_input(emp_data.get('Training Start'), ref_date)
         training_end = parse_time_input(emp_data.get('Training End'), ref_date)
-        
         b_end = b_start + pd.Timedelta(minutes=30) if pd.notna(b_start) else pd.NaT
-        # CORRECTED: Ensure t_end is a valid time before comparison
-        t_end = training_end if pd.notna(training_end) else (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
-        
+        t_end = training_end or (training_start + pd.Timedelta(minutes=60) if pd.notna(training_start) else pd.NaT)
         if pd.notna(s_start) and pd.notna(s_end):
             curr = s_start
             while curr < s_end:
                 on_break = pd.notna(b_start) and b_start <= curr < b_end
-                # CORRECTED: Only perform the check if training_start and t_end are valid times
                 on_training = pd.notna(training_start) and pd.notna(t_end) and training_start <= curr < t_end
                 is_working = not (on_break or on_training)
                 all_slots.append({
@@ -124,7 +114,7 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
         if is_solved: return True, final_schedule
     return False, None
 
-def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules, has_lobby=False):
+def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules, has_lobby=False, overrides=[]):
     final_schedule_row_order = BASE_FINAL_SCHEDULE_ROW_ORDER.copy()
     if not has_lobby:
         final_schedule_row_order.remove("Greeter")
@@ -143,7 +133,6 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
         breaks[time_str] = set(slot_data[slot_data['IsOnBreak']]['EmployeeName'])
         training[time_str] = set(slot_data[slot_data['IsOnTraining']]['EmployeeName'])
     schedule_assignments = {t: {} for t in time_slots_str}
-    overrides = load_config("overrides.yaml", default_value=[])
     for override in overrides:
         emp, pos = override.get('employee'), override.get('position')
         start_dt, end_dt = parse_time_input(override.get('start_time'), ref_date), parse_time_input(override.get('end_time'), ref_date)
@@ -159,8 +148,7 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
     is_solved, final_work_assignments = solve_schedule_recursive(
         0, time_slots_str, availability, schedule_assignments, {}, rules, work_positions
     )
-    if not is_solved:
-        return "ERROR: Could not find a valid schedule."
+    if not is_solved: return "ERROR: Could not find a valid schedule."
     rows = []
     for time_str in time_slots_str:
         row = {"Time": time_str}
