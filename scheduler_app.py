@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with All Text Changes)
+# File: scheduler_app.py (Final Version)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -61,12 +61,7 @@ st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', un
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
 st.sidebar.info("""
-Welcome to the scheduler tool! Enter your employees' work times below.
-To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
-
-Also, there's a bug I haven't figured out how to fix yet, so if you upload an employee data file, it might look like the site is bugging out and the data isn't loading in. Just click the little x that appears next to the file name and it'll stop the bugging and load the data. Ik it's weird, I haven't figured it out yet lol.
-
-If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
+Welcome to the scheduler tool! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.
 """)
 st.sidebar.markdown("---")
 
@@ -82,7 +77,7 @@ if uploaded_file is not None:
 st.sidebar.markdown('<h3>Store Settings</h3>', unsafe_allow_html=True)
 store_open_time_str = st.sidebar.text_input("Store Open Time", "7:30 AM")
 store_close_time_str = st.sidebar.text_input("Store Close Time", "10:00 PM")
-has_lobby = st.sidebar.checkbox("Does your store have a lobby?", value=True)
+has_lobby = st.sidebar.checkbox("Check this box if your store has a lobby (toggles the Greeter position)", value=True)
 
 # Employee Data Management
 st.sidebar.markdown('<h3>Employees</h3>', unsafe_allow_html=True)
