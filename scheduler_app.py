@@ -1,4 +1,4 @@
-# File: scheduler_app.py (Final Version with All Text Changes)
+# File: scheduler_app.py (Final Version with Scheduling Mode)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -60,15 +60,7 @@ if 'rules_text' not in st.session_state:
 st.markdown('<h1 style="color: #4CAF50;">Rule-Based Employee Scheduler</h1>', unsafe_allow_html=True)
 st.sidebar.markdown('<h1 style="color: #4CAF50; font-size: 24px;">Configuration</h1>', unsafe_allow_html=True)
 
-st.sidebar.info("""
-Welcome to the scheduler tool! Enter your employees' work times below.
-
-To ensure you never have to enter it by hand more than once, there's a button at the bottom that lets you download the info you've entered in a file that the site knows how to read.
-
-Also, there's a bug I haven't figured out how to fix yet, so if you upload an employee data file, it might look like the site is bugging out and the data isn't loading in. Just click the little x that appears next to the file name and it'll stop the bugging and load the data. Ik it's weird, I haven't figured it out yet lol.
-
-If anything doesn't make sense or the site doesn't appear to be working correctly, please text me at 385-212-1506.
-""")
+st.sidebar.info("Welcome to the scheduler tool! Edit rules in the main panel. Use the sidebar to configure employees and generate a schedule.")
 st.sidebar.markdown("---")
 
 # File Uploader
@@ -78,6 +70,15 @@ if uploaded_file is not None:
     file_content = uploaded_file.getvalue().decode("utf-8")
     st.session_state.employee_data = parse_summary_file(file_content)
     st.rerun()
+
+# Scheduling Mode Selector
+st.sidebar.markdown('<h3>Scheduling Mode</h3>', unsafe_allow_html=True)
+scheduling_mode = st.sidebar.radio(
+    "Select a scheduling mode:",
+    ("Optimal Mode (Slower)", "Fast Mode (First Available)"),
+    index=0,
+    help="Optimal mode finds the best schedule but can be slow. Fast mode finds the first valid schedule much more quickly."
+)
 
 # Store Hours & Settings
 st.sidebar.markdown('<h3>Store Settings</h3>', unsafe_allow_html=True)
@@ -182,12 +183,14 @@ if st.button("Generate Schedule", use_container_width=True):
         store_open_dt, store_close_dt = parse_time_input(store_open_time_str, ref_date), parse_time_input(store_close_time_str, ref_date)
         if pd.isna(store_open_dt) or pd.isna(store_close_dt): st.error("Invalid store open/close time.")
         else:
+            is_fast_mode = (scheduling_mode == "Fast Mode (First Available)")
             with st.spinner("Generating schedule..."):
                 schedule_output = create_rule_based_schedule(
                     store_open_dt.time(), store_close_dt.time(),
                     st.session_state.employee_data, session_rules,
                     has_lobby=has_lobby,
-                    overrides=st.session_state.overrides
+                    overrides=st.session_state.overrides,
+                    fast_mode=is_fast_mode
                 )
                 st.subheader("Generated Schedule")
                 if "ERROR:" in schedule_output: st.error(schedule_output)
