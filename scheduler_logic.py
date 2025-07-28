@@ -1,8 +1,8 @@
-# File: scheduler_logic.py (Final Version)
+# File: scheduler_logic.py (Final Version with Dual Solvers)
 import pandas as pd
 import yaml
 from io import StringIO
-from datetime import datetime, time
+from datetime import datetime
 from itertools import permutations
 
 # --- Configuration & Helper Functions ---
@@ -85,7 +85,7 @@ def calculate_assignment_score(assignments, employee_states, rules):
                 elif len(history) > 1 and history[-2] == pos: score -= 5
     return score
 
-def solve_schedule_recursive(time_idx, time_slots, availability, schedule, employee_states, rules, work_positions):
+def solve_optimal_recursive(time_idx, time_slots, availability, schedule, employee_states, rules, work_positions):
     if time_idx >= len(time_slots): return True, schedule
     current_time_slot_str = time_slots[time_idx]
     current_time_slot_obj = parse_time_input(current_time_slot_str, datetime(1970, 1, 1).date())
@@ -110,11 +110,35 @@ def solve_schedule_recursive(time_idx, time_slots, availability, schedule, emplo
             time_in_pos = state.get('time_in_pos', 0) + 1 if (pos == last_pos or in_same_group) else 1
             new_states[emp] = {'last_pos': pos, 'time_in_pos': time_in_pos, 'history': (state.get('history', []) + [pos])[-3:]}
         schedule[current_time_slot_str].update(best_perm)
-        is_solved, final_schedule = solve_schedule_recursive(time_idx + 1, time_slots, availability, schedule, new_states, rules, work_positions)
+        is_solved, final_schedule = solve_optimal_recursive(time_idx + 1, time_slots, availability, schedule, new_states, rules, work_positions)
         if is_solved: return True, final_schedule
     return False, None
 
-def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules, has_lobby=False, overrides=[]):
+def solve_fast_recursive(time_idx, time_slots, availability, schedule, employee_states, rules, work_positions):
+    if time_idx >= len(time_slots): return True, schedule
+    current_time_slot_str = time_slots[time_idx]
+    current_time_slot_obj = parse_time_input(current_time_slot_str, datetime(1970, 1, 1).date())
+    pre_assigned = set(schedule[current_time_slot_str].keys())
+    positions_to_fill = [p for p in work_positions if p not in pre_assigned]
+    avail_emps = sorted(list(availability.get(current_time_slot_str, [])))
+    positions_to_fill = positions_to_fill[:len(avail_emps)]
+    for p in permutations(avail_emps):
+        assigns = {pos: emp for pos, emp in zip(positions_to_fill, p)}
+        if all(is_assignment_valid(emp, pos, current_time_slot_obj, employee_states, rules) for pos, emp in assigns.items()):
+            new_states = employee_states.copy()
+            full_assigns = {**schedule[current_time_slot_str], **assigns}
+            for pos, emp in full_assigns.items():
+                state = employee_states.get(emp, {})
+                last_pos = state.get('last_pos')
+                in_same_group = any('max_consecutive_slots_in_group' in r and pos in r.get('position', []) and last_pos in r.get('position', []) for r in rules.get('position_rules', []))
+                time_in_pos = state.get('time_in_pos', 0) + 1 if (pos == last_pos or in_same_group) else 1
+                new_states[emp] = {'last_pos': pos, 'time_in_pos': time_in_pos, 'history': (state.get('history', []) + [pos])[-3:]}
+            schedule[current_time_slot_str].update(assigns)
+            is_solved, final_schedule = solve_fast_recursive(time_idx + 1, time_slots, availability, schedule, new_states, rules, work_positions)
+            if is_solved: return True, final_schedule
+    return False, None
+
+def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employee_data_list, rules, has_lobby=False, overrides=[], fast_mode=False):
     final_schedule_row_order = BASE_FINAL_SCHEDULE_ROW_ORDER.copy()
     if not has_lobby:
         final_schedule_row_order.remove("Greeter")
@@ -145,7 +169,9 @@ def create_rule_based_schedule(store_open_time_obj, store_close_time_obj, employ
                 if emp in availability.get(time_str, set()):
                     availability[time_str].remove(emp)
             curr += pd.Timedelta(minutes=30)
-    is_solved, final_work_assignments = solve_schedule_recursive(
+    
+    solver_function = solve_fast_recursive if fast_mode else solve_optimal_recursive
+    is_solved, final_work_assignments = solver_function(
         0, time_slots_str, availability, schedule_assignments, {}, rules, work_positions
     )
     if not is_solved: return "ERROR: Could not find a valid schedule."
