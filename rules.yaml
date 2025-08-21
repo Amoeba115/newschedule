@@ -14,9 +14,16 @@ position_rules:
     end_time: "10:00 PM"
     max_consecutive_slots_in_group: 2 
 
-  # These rules are ALWAYS active since there's no time window. You can add a time window using the formatting you see on the last rule, or you can change which positions are in which rules, or whatever else you want
   - position: [Handout, Expo]
+    start_time: "9:30 am"
+    end_time: "10:00 am"
     max_consecutive_slots: 2
+
+      # This group rule is ONLY active between 7:30 am and 9:30 am
+  - position: [Handout]
+    start_time: "7:30 am"
+    end_time: "9:30 am"
+    max_consecutive_slots_in_group: 4 
 
   - position: [Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
