@@ -8,20 +8,15 @@ position_rules:
     max_consecutive_slots: 2
     must_start_on_the_hour: true
 
-  # This group rule is ONLY active BEFORE 12:30 PM.
-  - position: [Line Buster 1, Line Buster 2, Line Buster 3]
-    end_time: "12:30 PM"
-    max_consecutive_slots_in_group: 2 # More lenient during the morning, when it's cooler and you can have someone outside for longer if needed
-
-  # This group rule is ONLY active AFTER 12:30 PM but BEFORE 7:30 PM.
+  # This group rule is ONLY active AFTER 12:30 PM but BEFORE 10:00 PM.
   - position: [Line Buster 1, Line Buster 2, Line Buster 3]
     start_time: "12:30 PM"
-    end_time: "7:30 PM"
-    max_consecutive_slots_in_group: 1 # Stricter during the rest of the day, thought if you want you can change it to be whatever hours you like
+    end_time: "10:00 PM"
+    max_consecutive_slots_in_group: 2 
 
   # These rules are ALWAYS active since there's no time window. You can add a time window using the formatting you see on the last rule, or you can change which positions are in which rules, or whatever else you want
   - position: [Handout, Expo]
-    max_consecutive_slots: 1
+    max_consecutive_slots: 2
 
   - position: [Drink Maker 1, Drink Maker 2]
     max_consecutive_slots: 2
